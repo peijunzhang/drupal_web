@@ -57,9 +57,17 @@ function tpd_init(){
 	  drupal_add_js($javascript_browser_name, 'inline');
 	}
 }
+function tpd_chart_alter(&$chart, $chart_id) {
+  if ($chart_id === 'tp_amendment_status' or $chart_id === 'tp_status') {
+    // Individual properties may be modified.
+    
+	//$chart['#background'] = 'white';
+  }
+  //dpm($chart);
+}
 
 function tpd_chart_definition_alter(&$definition, $chart, $chart_id) {
-  dpm($definition);
+  //dpm($definition);
   switch($chart_id){
 	 case 'tp_amendment_status':
 	 case 'tp_status':
@@ -80,6 +88,7 @@ function tpd_chart_definition_alter(&$definition, $chart, $chart_id) {
 				$colors = RandomColor::many($num_points); 
 				$definition['colors'] = $colors;
 			}
+			$definition['chart']['backgroundColor '] = 'white';
 		 }
 		 else{
 			 $definition['options']['legend']['alignment'] = 'center';
@@ -95,6 +104,7 @@ function tpd_chart_definition_alter(&$definition, $chart, $chart_id) {
 		 }
 		break;
   }
+  //dpm($definition);
  
 }
 function tpd_permission() {

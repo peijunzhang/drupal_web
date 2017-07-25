@@ -43,7 +43,7 @@ function tpd_data_export_menu() {
 
 
 function tpd_email_list_form($form, &$form_state) {
-	dpm($form_state);
+	//dpm($form_state);
 	$setting = variable_get(TPD_EMAIL_EXPORT_SETTING, array());
   //drupal_set_message(nhpid_api_dump($setting, 'red', TRUE));
 	$form['setting'] = array(

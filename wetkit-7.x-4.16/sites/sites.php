@@ -65,8 +65,9 @@ $sites['10.158.46.206.legal_opinion']='legal_opinion';
 
 //URL: http://10.158.46.206/wetkit_tpd
 $sites['10.158.46.206.wetkit_tpd']='wetkit_tpd';
+$sites['localhost.wetkit_tpd']='wetkit_tpd';
 //URL: http://10.158.46.206/wetkit_test
 $sites['10.158.46.206.wetkit_test']='wetkit_test';
 
-$sites['localhost.wetkit_tpd']='wetkit_tpd';
-
+//Asssessment central
+$sites['10.158.46.206.wetkit_ac']='wetkit_ac';

@@ -50,21 +50,17 @@ function nhpid_api_multi_code_field_allowed_values($code_node_type, $filter=NULL
       
     }
     else{
-      $sql = "SELECT nid FROM {node} WHERE type= :type";
-      $args = array();
-      $args[':type']= $code_node_type;
-      // workflow states
-      //$workflow_states_str = "'" . implode("','", $workflow_states) . "'";
-      if (!empty($workflow_states)){
-        $sql = $sql . " and nid in (select nid from {workflow_node} where sid in (select sid from {workflow_states}, {workflow_type_map} where workflow_states.wid=workflow_type_map.wid and sid in (:states) and type like :type2))";
-        $args[':states']= $workflow_states;
-      	$args[':type2']= $code_node_type;
-			}
-      $result = db_query($sql, $args);
-      //drupal_set_message(nhpid_api_dump($result, 'red', TRUE));
-      //drupal_set_message(nhpid_api_dump($workflow_states, 'red', TRUE));
-      $nids = $result -> fetchCol();
- 
+		$query = new EntityFieldQuery();      
+		$query->entityCondition('entity_type', 'node')
+			->entityCondition('bundle', $code_node_type)
+			->propertyCondition('status', NODE_PUBLISHED);
+		if (!empty($workflow_states)){
+			$query ->fieldCondition('field_workflow', 'value', $workflow_states, 'IN');
+		}
+		$result = $query->execute();
+		if (isset($result['node'])) {
+		  $nids = array_keys($result['node']);
+		} 
     }
     
     //drupal_set_message(nhpid_api_dump($result->fetchAll(), 'red', TRUE));
@@ -1277,14 +1273,12 @@ function get_all_fields_of_node_type($node_type) {
   return NULL;
 }
 
-function get_nhpid_visible_wkf_states() {
-  $visible_states = variable_get('nhpid_visible_wkf_states', array());
+function get_nhpid_visible_wkf_states($wid=1, $names=array('published', 'validated')) {
+	$visible_states = variable_get('nhpid_visible_wkf_states', array());
 	if (empty($visible_states)){
-		$workflow = workflow_get_workflows_by_name('NHPID Data Workflow');
-		$wid = $workflow -> wid;
-		$wkf_states = workflow_get_workflow_states_by_wid($wid);
-		foreach ($wkf_states as $wkf_state){
-      $visible_states[]=$wkf_state->sid;
+		foreach($names as $name){
+			$state= workflow_state_load_by_name($name, $wid);
+			$visible_states[] = $state->sid;
 		}
 	}
 	return $visible_states;
@@ -2155,7 +2149,6 @@ function delete_all_nodes_by_type($node_type) {
   
   node_delete_multiple($nids);
   return count($nids);
-  
 }
 function delete_node_by_type_title($node_type, $title) {
 //fetch the nodes we want to delete
@@ -2166,7 +2159,6 @@ function delete_node_by_type_title($node_type, $title) {
   foreach ($result as $row) {
     node_delete($row->nid);
   }
-
 }
 
 function delete_empty_title_node() {
@@ -2177,30 +2169,21 @@ function delete_empty_title_node() {
     node_delete($row->nid);
     $deleted_count+=1;
   }
-  //simple debug message so we can see what had been deleted.
-  //drupal_set_message("$deleted_count nodes have been deleted");
-  //mysql_free_result($result);
 }
-function nhpid_api_get_node_by_field_value($node_type, $field_name, $field_value){
-  $field_data_table = 'field_data_' . $field_name;
-  $field_value_col = $field_name . '_value';
-  $sql = "select distinct entity_id from {$field_data_table} where entity_type=:entity_type and bundle = :bundle and $field_value_col = :value";
-  $result = db_query($sql, array(':entity_type' => 'node', ':bundle' => $node_type, ':value' => $field_value)) ->fetchCol();
-  //drupal_set_message(nhpid_api_dump(placeholder_query_2_normal_query($sql,array(':entity_type' => 'node', ':bundle' => $node_type, ':value' => $field_value), 'purple', TRUE)));
-  //drupal_set_message(nhpid_api_dump($result, 'purple', TRUE));
-  $nodes = array();
-  if (is_array($result)){
-    foreach($result as $rc){
-      $nodes[] = $node = node_load($rc);
-    }
-  }
-  elseif ($result){
-    $nodes[] = $node = node_load($result);
-  }
-  else{
-    $nodes = array();
-  }
-  
+
+function nhpid_api_get_node_by_field_value($node_type, $field_name, $field_value, $column='value'){
+ 	$query = new EntityFieldQuery();
+	$query->entityCondition('entity_type', 'node')
+	  ->entityCondition('bundle', $node_type)
+	  //->propertyCondition('status', NODE_PUBLISHED)
+	  ->fieldCondition($field_name, $column, $field_value, '=');
+	  
+	$result = $query->execute();
+	$nodes = array();
+	if (isset($result['node'])) {
+	  $news_items_nids = array_keys($result['node']);
+	  $nodes = entity_load('node', $news_items_nids);
+	} 
   return $nodes;
 }
 
