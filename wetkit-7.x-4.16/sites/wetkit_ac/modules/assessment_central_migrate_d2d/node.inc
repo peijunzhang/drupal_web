@@ -294,7 +294,7 @@ class ACComboMigration extends ACNodeMigration {
 	if (parent::prepareRow($row) === FALSE) {
       return FALSE;
     }
-	print_r($row->field_combo_nhpid_name);
+	//print_r($row->field_combo_nhpid_name);
 	// workflow node to workflow field
     $workflow_row = Database::getConnection('legacy', $this->sourceConnection)
                  ->select('workflow_node', 'wd')
@@ -324,7 +324,7 @@ class ACComboMigration extends ACNodeMigration {
 		}
 	}
 	$row->field_combo_nhpid_name = $target_ids;
-	print_r($row->field_combo_nhpid_name);
+	//print_r($row->field_combo_nhpid_name);
 	//print_r($row->{'field_current_tp_status:entity_id'});
 			
 	return True;
@@ -334,14 +334,28 @@ class ACComboMigration extends ACNodeMigration {
 /**
  * Combo mappings and handling. Handleing the field field_linked_combos
  */
-class ACComboMigration2 extends ACNodeMigration {
+class ACComboMigration2 extends DrupalNode7Migration {
   public function __construct(array $arguments) {
     
     parent::__construct($arguments);
 
-    $this->addFieldMapping('nid', 'nid')->sourceMigration('Combo');
+    $this->addFieldMapping('nid', 'nid')->sourceMigration('Combo_4');
 	$this->addFieldMapping('field_linked_combos', 'field_linked_combos');
-	$this->addFieldMapping('field_combo_name', 'field_combo_name');
+	//$this->addFieldMapping('field_combo_name', 'field_combo_name');
+	$this->systemOfRecord = Migration::DESTINATION;
+  }
+  public function get_new_nid($legacy_nid){
+	$entity_row = Database::getConnection('default')
+                 ->select('field_data_field_legacy_nid', 'c')
+                 ->fields('c', array('entity_id', 'field_legacy_nid_value'))
+				 ->condition('field_legacy_nid_value', $legacy_nid)
+                 ->execute()
+                 ->fetchObject();
+	if($entity_row){
+		$entity_id = $entity_row -> entity_id;
+		return $entity_id;
+	}  
+	return null;
   }
   public function prepareRow($row) {
     // If the  workflow states setting is different from old D7 to new D7, a mapping must be done.
@@ -349,8 +363,8 @@ class ACComboMigration2 extends ACNodeMigration {
 	if (parent::prepareRow($row) === FALSE) {
       return FALSE;
     }
-	print_r($row);
-	print_r($row->field_linked_combos);
+	print_r($row->nid);
+	//print_r($row->field_linked_combos);
 	$legacy_target_ids = $row->field_linked_combos;
 	$new_target_ids = array();
 	if ($legacy_target_ids){
@@ -366,7 +380,8 @@ class ACComboMigration2 extends ACNodeMigration {
 		}
 		$row->field_linked_combos = $new_target_ids;
 	}
-	print_r($row->field_linked_combos);
+		
+	print_r($row->nid);
 	return True;
   }
 }

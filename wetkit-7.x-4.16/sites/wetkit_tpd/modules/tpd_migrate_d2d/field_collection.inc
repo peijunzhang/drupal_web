@@ -13,7 +13,7 @@ class TPDPrimaryUserMigration extends DrupalMigration {
     parent::__construct($arguments);
 
     $this->description = t('field_primary_user migration from old D7.');
-    $this->dependencies = array('TradingPartner');
+    $this->dependencies = array('TradingPartner_4');
 
     $this->sourceFields += array(
       'item_id' => t('Item Id'),
@@ -164,7 +164,7 @@ class TPDDelegatedUsersMigration extends DrupalMigration {
     parent::__construct($arguments);
 
     $this->description = t('field_delegated_users migration from old D7.');
-    $this->dependencies = array('TradingPartner');
+    $this->dependencies = array('TradingPartner_4');
 
     $this->sourceFields += array(
       'item_id' => t('Item Id'),
@@ -314,7 +314,7 @@ class TPDOtherUsersMigration extends DrupalMigration {
     parent::__construct($arguments);
 
     $this->description = t('field_other_users migration from old D7.');
-    $this->dependencies = array('TradingPartner');
+    $this->dependencies = array('TradingPartner_4');
 
     $this->sourceFields += array(
       'item_id' => t('Item Id'),

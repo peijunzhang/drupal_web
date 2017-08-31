@@ -48,7 +48,7 @@ function tpd_migrate_d2d_migrate_api() {
   // Register the user migration.
    // Migrate roles
   
-  $api['migrations']['Role'] = $common_arguments + array(
+  $api['migrations']['Role_1'] = $common_arguments + array(
     'description' => t('Migration of Roles'),
     'class_name' => 'DrupalRole7Migration',
 	'role_mappings' => array(
@@ -59,10 +59,10 @@ function tpd_migrate_d2d_migrate_api() {
   );
 
   // We just use the migrate_d2d D7 migration class as-is.
-  $api['migrations']['User'] = $common_arguments + array(
+  $api['migrations']['User_2'] = $common_arguments + array(
     'description' => t('Migration of users'),
     'class_name' => 'DrupalUser7Migration',
-	'role_migration' => 'Role',
+	'role_migration' => 'Role_1',
   );
 
   // For vocabulary migrations, source_vocabulary and destination_vocabulary are
@@ -100,20 +100,20 @@ function tpd_migrate_d2d_migrate_api() {
   // specifying its particular field mappings and transformations. source_type
   // and destination_type are required arguments.
   $node_arguments = array(
-    'CodeAmendmentStatus' => array(
+    'CodeAmendmentStatus_3' => array(
       'class_name' => 'TPDCodeAmendmentStatusMigration',
       'description' => t('Migration of Code Amendment Status nodes'),
       'source_type' => 'code_amendment_status',
       'destination_type' => 'code_amendment_status',
     ),
-	'CodeTPStatus' => array(
+	'CodeTPStatus_3' => array(
       'class_name' => 'TPDCodeTPStatusMigration',
       'description' => t('Migration of Code TP Status nodes'),
       'source_type' => 'code_tp_status',
       'destination_type' => 'code_tp_status',
     ),
 	
-	'TradingPartner' => array(
+	'TradingPartner_4' => array(
       'class_name' => 'TPDTradingPartnerMigration',
       'description' => t('Migration of Trading Partner nodes'),
       'source_type' => 'trading_partner',
@@ -125,7 +125,7 @@ function tpd_migrate_d2d_migrate_api() {
   // Tell the node migrations where the users are coming from, so they can
   // set up the dependency and resolve D6->D7 uids.
   $common_node_arguments = $common_arguments + array(
-      'user_migration' => 'User'
+      'user_migration' => 'User_2'
     );
 
   foreach ($node_arguments as $migration_name => $arguments) {
@@ -151,15 +151,15 @@ function tpd_migrate_d2d_migrate_api() {
   $api['migrations']['MenuLinks'] = $menu_links_arguments;
 	*/
 	// field collection
-	$api['migrations']['PrimaryUser'] = $common_arguments + array(
+	$api['migrations']['PrimaryUser_5'] = $common_arguments + array(
     'description' => t('Migration of primary users'),
     'class_name' => 'TPDPrimaryUserMigration',
 	);
-	$api['migrations']['DelegatedUsers'] = $common_arguments + array(
+	$api['migrations']['DelegatedUsers_5'] = $common_arguments + array(
     'description' => t('Migration of delegated users'),
     'class_name' => 'TPDDelegatedUsersMigration',
 	);
-	$api['migrations']['OtherUsers'] = $common_arguments + array(
+	$api['migrations']['OtherUsers_5'] = $common_arguments + array(
     'description' => t('Migration of other users'),
     'class_name' => 'TPDOtherUsersMigration',
 	);

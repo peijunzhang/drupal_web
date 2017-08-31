@@ -48,7 +48,7 @@ function assessment_central_migrate_d2d_migrate_api() {
   // Register the user migration.
    // Migrate roles
   
-  $api['migrations']['Role'] = $common_arguments + array(
+  $api['migrations']['Role_1'] = $common_arguments + array(
     'description' => t('Migration of Roles'),
     'class_name' => 'DrupalRole7Migration',
 	'role_mappings' => array(
@@ -59,10 +59,10 @@ function assessment_central_migrate_d2d_migrate_api() {
   );
 
   // We just use the migrate_d2d D7 migration class as-is.
-  $api['migrations']['User'] = $common_arguments + array(
+  $api['migrations']['User_2'] = $common_arguments + array(
     'description' => t('Migration of users'),
     'class_name' => 'DrupalUser7Migration',
-	'role_migration' => 'Role',
+	'role_migration' => 'Role_1',
   );
 
   // For vocabulary migrations, source_vocabulary and destination_vocabulary are
@@ -100,44 +100,44 @@ function assessment_central_migrate_d2d_migrate_api() {
   // specifying its particular field mappings and transformations. source_type
   // and destination_type are required arguments.
   $node_arguments = array(
-    'LinkType' => array(
+    'LinkType_3' => array(
       'class_name' => 'ACLinkTypeMigration',
       'description' => t('Migration of Link Type nodes'),
       'source_type' => 'link_type',
       'destination_type' => 'link_type',
     ),
-	'NoteType' => array(
+	'NoteType_3' => array(
       'class_name' => 'ACNoteTypeMigration',
       'description' => t('Migration of Note type nodes'),
       'source_type' => 'note_type',
       'destination_type' => 'note_type',
     ),
-	'PCIType' => array(
+	'PCIType_3' => array(
       'class_name' => 'ACPCITypeMigration',
       'description' => t('Migration of PCI type nodes'),
       'source_type' => 'pci_type',
       'destination_type' => 'pci_type',
     ),
 	
-	'NHPIDIngredient' => array(
+	'NHPIDIngredient_3' => array(
       'class_name' => 'ACNHPIDIngredientMigration',
       'description' => t('Migration of NHPID Ingredient nodes'),
       'source_type' => 'nhpid_ingredient',
       'destination_type' => 'nhpid_ingredient',
     ),
-	'Combo' => array(
+	'Combo_4' => array(
       'class_name' => 'ACComboMigration',
       'description' => t('Migration of Combo nodes'),
       'source_type' => 'combo',
       'destination_type' => 'combo',
     ),
-	'Combo2' => array(
+	'Combo2_5' => array(
       'class_name' => 'ACComboMigration2',
       'description' => t('Migration of Combo nodes'),
       'source_type' => 'combo',
       'destination_type' => 'combo',
     ),
-	'MI' => array(
+	'MI_4' => array(
       'class_name' => 'ACMIMigration',
       'description' => t('Migration of MI nodes'),
       'source_type' => 'mi',
@@ -149,7 +149,7 @@ function assessment_central_migrate_d2d_migrate_api() {
   // Tell the node migrations where the users are coming from, so they can
   // set up the dependency and resolve D6->D7 uids.
   $common_node_arguments = $common_arguments + array(
-      'user_migration' => 'User'
+      'user_migration' => 'User_2'
     );
 
   foreach ($node_arguments as $migration_name => $arguments) {
@@ -176,11 +176,11 @@ function assessment_central_migrate_d2d_migrate_api() {
 	*/
 	// field collection
 	
-	$api['migrations']['FCNotes'] = $common_arguments + array(
+	$api['migrations_6']['FCNotes'] = $common_arguments + array(
     'description' => t('Migration of field collection field_notes'),
     'class_name' => 'ACNotesMigration',
 	);
-	$api['migrations']['FCPCI'] = $common_arguments + array(
+	$api['migrations_6']['FCPCI'] = $common_arguments + array(
     'description' => t('Migration of field collection field_pci'),
     'class_name' => 'ACPCIMigration',
 	);

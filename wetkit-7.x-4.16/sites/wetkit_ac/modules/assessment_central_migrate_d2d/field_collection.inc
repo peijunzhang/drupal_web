@@ -48,7 +48,7 @@ class ACNotesMigration extends ACFCMigration {
     parent::__construct($arguments);
 
     $this->description = t('field_notes migration from old D7.');
-    $this->dependencies = array('Combo', 'MI');
+    $this->dependencies = array('Combo_4', 'MI_4');
 
     $this->sourceFields += array(
       'item_id' => t('Item Id'),
@@ -65,7 +65,7 @@ class ACNotesMigration extends ACFCMigration {
     );
 	//$this->sourceFields += parent::getSourceFields('field_collection_item', 'field_primary_user');
 	/*				 
-	$query = Database::getConnection('legancy', $this->sourceConnection)
+	$query = Database::getConnection('legacy', $this->sourceConnection)
 		->select('field_collection_item', 'c')
 		->fields('c', array('item_id', 'revision_id', 'field_name', 'archived'))
 		->condition('field_name', 'field_primary_user');
@@ -206,7 +206,7 @@ class ACPCIMigration extends ACFCMigration {
     );
 	//$this->sourceFields += parent::getSourceFields('field_collection_item', 'field_primary_user');
 	/*				 
-	$query = Database::getConnection('legancy', $this->sourceConnection)
+	$query = Database::getConnection('legacy', $this->sourceConnection)
 		->select('field_collection_item', 'c')
 		->fields('c', array('item_id', 'revision_id', 'field_name', 'archived'))
 		->condition('field_name', 'field_primary_user');
@@ -267,7 +267,7 @@ class ACPCIMigration extends ACFCMigration {
     }
 	print_r($row);
 	// Mapping field collection item id
-	$legacy_host_entity_row = Database::getConnection('legancy', $this->sourceConnection)
+	$legacy_host_entity_row = Database::getConnection('legacy', $this->sourceConnection)
                  ->select('field_data_field_pci', 'c')
                  ->fields('c', array('entity_id', 'field_pci_value'))
 				 ->condition('bundle', array('combo', 'mi'), 'IN')

@@ -71,3 +71,8 @@ $sites['10.158.46.206.wetkit_test']='wetkit_test';
 
 //Asssessment central
 $sites['10.158.46.206.wetkit_ac']='wetkit_ac';
+
+//nhpid
+$sites['10.158.46.206.old_nhpid']='old_nhpid';
+$sites['10.158.46.206.wetkit_nhpid']='wetkit_nhpid';
+

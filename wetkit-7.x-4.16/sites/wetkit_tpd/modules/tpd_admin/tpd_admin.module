@@ -84,6 +84,7 @@ function tpd_admin_form($form, &$form_state = NULL) {
                 //'code_testing'  => 'Test php code',
                 //'back_up_variable' => 'Back up Variabls',
                 //'batch_testing'  => 'Test Batch API'
+				
                  );
   if (in_array($user_uid, $restricted_users)){
     $action_option = array_merge ($action_option, array('select_task' => 'Select A Task',
@@ -101,7 +102,8 @@ function tpd_admin_form($form, &$form_state = NULL) {
 								//'export_serialized_all_node_by_type' => 'Export serialized nodes by types',
                 'code_testing'  => 'Test php code',
                 //'back_up_variable' => 'Back up Variabls',
-                'import_export_field_collection'  => 'Export/import field collection'
+                'import_export_field_collection'  => 'Export/import field collection',
+				'tpd_migration_from_old7_to_new7' => 'Migrate TPD from old D7 to New D7'
                  ));
 
   }
@@ -154,8 +156,9 @@ function tpd_admin_form($form, &$form_state = NULL) {
         // grant field permissions
         //drupal_goto('nhpid_admin2.php');
         $form[] =load_data($form_state);
-        
-        break;
+      case 'tpd_migration_from_old7_to_new7':
+        $form[] =tpd_migration_from_old_d7_to_new_d7_form($form_state);
+        break;   
         
       case 'mapping_report':
         $form[] =mapping_report($form_state);
@@ -3243,4 +3246,100 @@ function na_area_code_2_country_code($area_code){
 			}
    
 	}
+}
+
+function migrate_tpd_from_old_d7_to_new_d7(){
+	$old_db_name = 'old_tpd';
+	$new_db_name = 'wetkit_tpd';
+	/* Users
+	**
+	**
+	*/
+	
+	## role mapping
+	$role_sql = "select old_role.rid as old_rid, old_role.name as old_name, new_role.rid as new_rid, new_role.name as new_name from $old_db_name.role as old_role  left join $new_db_name.role as new_role on new_role.name = old_role.name";
+	$role_data = db_query($role_sql);
+	$role_map = array();
+	foreach($role_data as $rc){
+		$role_map[$rc->old_name]=array('old_rid'=>$rc->old_rid, 'new_rid'=>$rc->new_rid);
+	}
+	
+
+	$sql = "select * from  $old_db_name.users where uid >1";
+	$old_data = db_query($sql);
+	foreach ($old_data as $rc){
+		$uid = $rc -> uid;
+		$name = $rc -> name;
+		$pass = $rc -> pass;
+		$mail = $rc -> mail;
+		$theme = $rc -> theme;
+		$signature = $rc -> signature;
+		$signature_format = $rc -> signature_format;
+		$created = $rc -> created;
+		$access = $rc -> access;
+		$login = $rc -> login;
+		$status = $rc -> status;
+		$timezone = $rc -> timezone;
+		$language = $rc -> language;
+		$picture = $rc -> picture;
+		$init = $rc -> init;
+		$data = unserialize($rc -> data);
+		
+		$account = user_load_by_name($name);
+		if (!$account){
+			$account = entity_create('user', array());
+			$account->name = $name;
+		}
+		$account->pass = $pass;
+		$account->signature=$signature;
+		$account->picture=$picture;
+		$account->signature_format=$signature_format;
+		$account->init=$init;
+		$account->timezone=$timezone;
+		$account->theme=$theme;
+		$account->created=$created;
+		$account->access=$access;
+		$account->login=$login;
+		$account->status=$status;
+		$account->language=$language;
+		if (is_array($data)){
+			$account->data = array_merge($account->data, $data);
+		}
+		else{
+			$account->data[] = $data;
+		}
+		$account->data=$data;
+		
+		## roles
+		$old_user_roles_sql = "select ur.*, r.name from $old_db_name.users_roles as ur,  $old_db_name.role as r where ur.rid=r.rid and uid=:old_uid";
+		$old_user_roles_data = db_query($old_user_roles_sql, array(':old_uid' => $uid));
+		$new_roles = array();
+		foreach($old_user_roles_data as $urc){
+			$rname = $urc -> name;
+			$new_roles[$role_map[$rname]['new_rid']]=$rname;
+		}
+		$account->roles=$new_roles;
+		//entity_uuid_save('user', $account);
+		entity_save('user', $account);
+		//dpm($account);
+	
+	}
+	## permissions
+	/*
+	$old_perm_sql = "select rp.*,r.name  from $old_db_name.role_permission as rp,$old_db_name.role as r where rp.rid=r.rid";
+	$old_perm_data = db_query($old_perm_sql);
+	foreach($old_perm_data as $rc){
+		$rid = $rc->rid;
+		$perm = $rc->permission;
+		$module=$rc->module;
+		$rname = $rc -> name;
+		$new_rid=$role_map[$rname]['new_rid'];
+		$new_perm_sql="insert ignore into $new_db_name.role_permission(rid, permission, module) values(:rid,:perm,:module)";
+		db_query($new_perm_sql, array(':rid'=>$rid, ':perm'=>$perm, ':module'=>$module));
+	}
+	*/
+	## nodes
+	### codes
+	#### code_tp_type
+	
 }

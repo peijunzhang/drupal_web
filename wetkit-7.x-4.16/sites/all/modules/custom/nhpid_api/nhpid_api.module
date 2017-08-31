@@ -287,9 +287,9 @@ function get_all_node_by_type($node_type, $sql = NULL, $args = array(), $options
 	    $line['nid'] = $node -> nid;
       $line['changed'] = format_date($node->changed, 'short', '', $user_time_zone,  NULL);
 	    if (!$node_type) $node_type = $node -> type;
-	    $workflow_state = workflow_get_workflow_states_by_sid($node -> workflow);
+	    $workflow_state = workflow_get_sid_label(workflow_node_current_state($node));
 
-	    $line['workflow_state'] = (bool)$workflow_state ? $workflow_state -> state : '';
+	    $line['workflow_state'] = (bool)$workflow_state ? $workflow_state : '';
 			$fields = field_info_instances('node', $node_type);
 			foreach($fields as $field_name => $field_info){
         $display = array();
@@ -445,17 +445,17 @@ function get_workflow_state_obj($sid) {
   //$sql = "select ws.* from {workflow_states} ws, {workflow_type_map} wp where  ws.wid = wp.wid and wp.type = '%s' and ws.sid = %d";
   //drupal_set_message($sql);
   //return db_query($sql, array($node_type, $sid));
-  return workflow_get_workflow_states_by_sid($sid);
+  return workflow_state_load_single($sid);
 }
 function get_node_current_state_state($node){
   //$sid = (workflow_node_current_state($node)); not working for nodes which have not been saved after creation or change.
-  $sid = property_exists($node, 'workflow')? $node -> workflow : null;
-  if ($sid) return workflow_get_workflow_states_by_sid($sid) -> state;
+  $sid = workflow_node_current_state($node);
+  if ($sid) return workflow_get_sid_label($sid);
 }
 function get_node_original_state_state($node){
   if (isset($node -> original)){
     $sid = $node -> original -> workflow;
-    if ($sid)return workflow_get_workflow_states_by_sid($sid) -> state;
+    if ($sid)return workflow_get_sid_label($sid);
   }
 }
 function get_current_workflow_state_sid($node = NULL, $nid = NULL) {
@@ -1283,6 +1283,8 @@ function get_nhpid_visible_wkf_states($wid=1, $names=array('published', 'validat
 	}
 	return $visible_states;
 }
+
+
 /** $vid: default current vid
  *
 */ 
@@ -2189,9 +2191,9 @@ function nhpid_api_get_node_by_field_value($node_type, $field_name, $field_value
 
 function nhpid_get_workflow_states_by_type($type){
   $states = array();
-  $workflow_type_map = workflow_get_workflow_type_map_by_type($type);
+  $workflow_type_map = workflow_get_workflows_by_type($type);
   if ($workflow_type_map){
-    $wkf_objs = workflow_get_workflow_states_by_wid($workflow_type_map->wid);
+    $wkf_objs = $workflow_type_map->states;
     foreach ($wkf_objs as $wkf_obj){
       $states[] = $wkf_obj-> state;
     }
@@ -2889,8 +2891,8 @@ function nhpid_api_save_calculated_field_values($node){
 		$values['title'] = $node -> title;
     $values['nid'] = $node -> nid;
     $values['changed'] = $node -> changed;
-    $workflow_state = workflow_get_workflow_states_by_sid($node -> workflow);
-    $values['workflow_state'] = (bool)$workflow_state ? $workflow_state -> state : '';
+    $workflow_state = workflow_get_sid_label(workflow_node_current_state($node));
+    $values['workflow_state'] = (bool)$workflow_state ? $workflow_state : '';
 		$values = serialize($values);
     //$sql = 'insert into {field_collection_calculated_value} (nid, type, workflow_state, value) values(:nid,:type:, :workflow_state, :value) ON DUPLICATE KEY UPDATE type=:type2, workflow_state=:workflow_state2,value=:value2';
 		//db_query($sql, array(':nid' => $node -> nid, ':type' => $node->type, ':workflow_state'=>$node -> workflow, ':value' => $values, ':type2' => $node->type, ':workflow_state2'=>$node -> workflow, ':value2' => $values));

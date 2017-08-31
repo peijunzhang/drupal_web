@@ -126,27 +126,6 @@ function tpd_permission() {
 } 
 
 
-function tpd_form_alter(&$form, &$form_state, $form_id) {
-  global $user;
-  $node_type = isset($form['#node'])? $form['#node']->type : '';
-  $form_id = $form['form_id']['#id'];
-  $pattern = '/edit\-(.+)\-node\-form/';
-  	//delete any types which are not nhpid data types from type options
-	if ($form_id == 'edit-views-exposed-form'){
-		if ($form_state['view']-> name == 'workflow_summary' or $form_state['view']-> name == 'work_summary'){
-			$nhpid_data_types = get_all_nhpid_data_node_types();
-			$new_options = array();
-			$new_options['All'] = $form['type']['#options']['All'];
-			$new_options = array_merge($new_options, $nhpid_data_types);
-
-			$form['type']['#options']=$new_options;
-
-		}
-	}
-
-}
-
-
 /**
  * Implementation of hook_form_FORM_ID_alter
  */
@@ -159,7 +138,7 @@ function tpd_form_node_form_alter(&$form, &$form_state, $form_id){
 	}
 	$form['revision_information']['#collapsed']=FALSE;
   $form['revision_information']['#weight']=-100;
-	if (!user_access('bypass node access') && nhpid_api_is_a_nhpid_data_node_type($form['#node']->type)){
+	if ($form['#node'] && !user_access('bypass node access') && nhpid_api_is_a_nhpid_data_node_type($form['#node']->type)){
 	
     $form['options']['#access']=false;
     $form['author']['#access']=false;

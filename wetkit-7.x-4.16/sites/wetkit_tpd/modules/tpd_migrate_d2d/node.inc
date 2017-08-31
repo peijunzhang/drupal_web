@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Common mappings for the Drupal 6 node migrations.
+ * Common mappings for the TPD node migrations.
  */
 abstract class TPDNodeMigration extends DrupalNode7Migration {
   public function __construct(array $arguments) {
