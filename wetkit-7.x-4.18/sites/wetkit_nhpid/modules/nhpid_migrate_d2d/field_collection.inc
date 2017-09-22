@@ -39,16 +39,43 @@
   public function map_field_reference(&$row, $field_name){
 	if (property_exists($row, "$field_name")){
 		$legacy_nids=$row->{"$field_name"};
-		$target_ids= array();
 		if (!empty($legacy_nids)){
-			foreach($legacy_nids as $legacy_nid){
-				$target_ids[] = $this->get_new_nid($legacy_nid);
+			if(is_array($legacy_nids)){
+				$target_ids= array();
+				foreach($legacy_nids as $legacy_nid){
+					$target_ids[] = $this->get_new_nid($legacy_nid);
+				}
+			}
+			else{
+				$target_ids = $this->get_new_nid($legacy_nids);
 			}
 			$row->{$field_name}=$target_ids;
 		}
 	}
   }
-
+	public function map_mono_dependency_field_reference(&$row, $field_name){
+	if (property_exists($row, "$field_name:entity_id")){
+		$old_codes=$row->$field_name;
+		$target_ids= array();
+		if (!empty($old_codes)){
+			if(is_array($old_codes)){
+				foreach($old_codes as $old_code){
+					$code_parts=preg_split('/-/',$old_code);
+					$text=$code_parts[0];
+					$legacy_nid=$code_part[1];
+					$target_ids[] = $text . '-' . $this->get_new_nid($legacy_nid);
+				}
+			}
+			else{
+				$code_parts=preg_split('/-/',$old_codes);
+				$text=$code_parts[0];
+				$legacy_nid=$code_part[1];
+				$target_ids = $text . '-' . $this->get_new_nid($legacy_nid);
+			}
+			$row->{$field_name}=$target_ids;
+		}
+	}
+  }
 }
 
 /**
@@ -66,7 +93,7 @@ class NHPIDFCMigration extends FCMigration {
 	$this->dependencies = $arguments['dependencies'];
 	$fields = array();
 	foreach($field_instances as $field_name => $info){
-		if ($field_name != 'field_legacy_nid'){
+		if (! in_array($field_name, array('field_legacy_nid', 'field_legacy_item_id'))){
 			$fields[$field_name] = $info['label'];
 		}
 	}
@@ -106,6 +133,7 @@ class NHPIDFCMigration extends FCMigration {
     
 	$this->addFieldMapping('host_entity_id', 'host_entity_id');
 	//$this->addFieldMapping('field_legacy_nid', 'nid') ->description('We have a common field to save the D6 nid');
+	$this->addFieldMapping('field_legacy_item_id', 'item_id') ->description('We have a common field to save the D6 nid');
 	    
   }
   /**
@@ -137,35 +165,35 @@ class NHPIDFCMigration extends FCMigration {
 	}
 	
 	//print_r($query->execute()->rowCount());
-	print_r($query->__toString());
+	//print_r($query->__toString());
     return $query;
   }
   
   public function prepareRow($row) {
-    print_r($row);
+    //print_r($row);
 	if (parent::prepareRow($row) === FALSE) {
       return FALSE;
     }
 	
 	// Mapping field collection item id
 	$old_field_collection_field_table = 'field_data_' . $this->source_type;
-	$legacy_host_entity_row = Database::getConnection('legancy', $this->sourceConnection)
+	$legacy_host_entity_row = Database::getConnection('default', $this->sourceConnection)
                  ->select($old_field_collection_field_table, 'c')
-                 ->fields('c', array('entity_id', $this->source_type .'_value'))
+                 ->fields('c', array('entity_id', 'delta', $this->source_type .'_value'))
 				 ->condition($this->source_type .'_value', $row->item_id)
                  ->execute()
                  ->fetchObject();
-		print_r($legacy_host_entity_row);
+		//print_r($legacy_host_entity_row);
 		if($legacy_host_entity_row){
 			$legacy_entity_id = $legacy_host_entity_row -> entity_id;
-			print_r($legacy_entity_id );
+			//print_r($legacy_entity_id );
 			$new_host_entity_row = Database::getConnection('default')
                  ->select('field_data_field_legacy_nid', 'c')
                  ->fields('c', array('entity_id', 'field_legacy_nid_value'))
 				 ->condition('field_legacy_nid_value', $legacy_entity_id)
                  ->execute()
                  ->fetchObject();
-			print_r($new_host_entity_row );
+			//print_r($new_host_entity_row );
 			$row->host_entity_id = $new_host_entity_row->entity_id;
 		}
 		else{
@@ -177,10 +205,37 @@ class NHPIDFCMigration extends FCMigration {
 		if ($field['type'] == 'entityreference'){
 			$this->map_field_reference($row, $field_name);
 		}
+		//print_r($field_name);
+	}
+	//mapping mono dependency fields fields target id
+	$dependency_fields = array('field_dose_dependency','field_duration_dependency', 'field_for_use_dependency','field_risk_dependency','field_use_dependency',);
+	foreach($this -> destination_fields as $field_name => $label){
+		//$field=field_info_field($field_name);
+		if (in_array($field_name, $dependency_fields)){
+			
+			//$this->map_field_reference($row, $field_name);
+		}
+		//print_r($field_name);
 	}
 	
-	print_r($row);
-	print_r($row->item_id . " is migrated \n");
+	//print_r($row);
+	print_r($row->host_entity_id . ':'. $row->item_id . " is migrated \n");
 	return True;
+  }
+  public function complete_($entity, stdClass $row){
+	  //print_r($entity);
+	  //print_r($row);
+	  // author uid
+	if ($entity->item_id){
+		// change item_id in host node
+			$wrapper = entity_metadata_wrapper('node', node_load($row->host_entity_id));
+			if (get_class($wrapper -> {$this->destination_type}) =='EntityDrupalWrapper') {
+				$wrapper -> {$this->destination_type}=$entity->item_id;
+			}
+			else{
+				$wrapper -> {$this->destination_type}[]=$entity->item_id;
+			}
+			//$wrapper->save();
+	}
   }
 }

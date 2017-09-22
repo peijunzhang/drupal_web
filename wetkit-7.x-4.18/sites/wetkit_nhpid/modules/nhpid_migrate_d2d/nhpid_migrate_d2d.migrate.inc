@@ -480,15 +480,42 @@ function nhpid_migrate_d2d_migrate_api() {
   $api['migrations']['MenuLinks'] = $menu_links_arguments;
 	*/
 	// field collection
-	$type = 'field_fc_use_dependency';
-	$api['migrations']['field_fc_use_dependency'] = $common_arguments + array(
-    'description' => t('Migration of field collection field_notes'),
-    'class_name' => 'NHPIDFCMigration',
-	'source_type' => $type,
-    'destination_type' => $type,
-	'group_name' => 'nhpid_group_field_collection_group1',
-	'dependencies'=>array('mono_use'),
+	$field_collection_fields= array(
+		'field_fc_use_dependency' => array('mono_use'),
+		'field_fc_cas_number' => array('herbal_hcn', 'naming_chemical','naming_protein', 'nonnhp_chemical'),
+		'field_fc_chem_mn_sc_org_part'=>array('mono_entry'),
+		'field_fc_chem_mon_src_ad_sc_e'=>array('mono_entry'),
+		'field_fc_chem_mon_src_ad_sc_f'=>array('mono_entry'),
+		'field_fc_chem_mon_src_adt_ing'=>array('mono_entry'),
+		'field_fc_chem_mon_src_ing'=>array('mono_entry'),
+		'field_fc_common_name_e'=>array('mono_entry'),
+		'field_fc_common_name_f'=>array('mono_entry'),
+		'field_fc_org_mon_src_part'=>array('mono_entry'),
+		'field_fc_proper_name_e'=>array('mono_entry'),
+		'field_fc_proper_name_f'=>array('mono_entry'),
+		'field_fc_subingredient_source'=>array('mono_entry'),
+		'field_fc_common_name'=>array('nonnhp_organism', 'naming_chemical','naming_protein', 'nonnhp_chemical'),
+		'field_fc_dose_dependency'=>array('mono_dose', 'mono_dose_combination'),
+		'field_fc_duration_dependency'=>array('mono_duration'),
+		'field_fc_excluded_item'=>array('naming_org_group'),
+		'field_fc_for_use_dependency'=>array('mono_direction_for_use'),
+		'field_fc_included_item'=>array('naming_org_group'),
+		'field_fc_proper_name'=>array('nonnhp_organism', 'naming_chemical','naming_protein', 'nonnhp_chemical'),
+		'field_fc_risk_dependency'=>array('mono_risk'),
+		'field_fc_synonym_e'=>array('nonnhp_organism', 'naming_chemical','naming_protein', 'nonnhp_chemical','herbal_hcn','naming_organism', 'naming_org_substance'),
+		'field_fc_synonym_f'=>array('nonnhp_organism', 'naming_chemical','naming_protein', 'nonnhp_chemical','herbal_hcn','naming_organism', 'naming_org_substance'),
+		'field_fc_taxon'=>array('naming_organism','nonnhp_organism'),
 	);
+	foreach($field_collection_fields as $type=>$dependencies){
+		$api['migrations'][$type] = $common_arguments + array(
+		'description' => t('Migration of field collection field_notes'),
+		'class_name' => 'NHPIDFCMigration',
+		'source_type' => $type,
+		'destination_type' => $type,
+		'group_name' => 'nhpid_group_field_collection_group1',
+		'dependencies'=>$dependencies,
+		);
+	}
 	/*
 	$api['migrations_6']['FCPCI'] = $common_arguments + array(
     'description' => t('Migration of field collection field_pci'),

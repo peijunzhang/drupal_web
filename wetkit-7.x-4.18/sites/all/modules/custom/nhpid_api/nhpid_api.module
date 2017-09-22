@@ -1127,58 +1127,48 @@ function nhpid_api_get_mono_dependency_allowed_values_mapping() {
     switch ($type) {
       case 'SUBP':
         $field_reference_field = 'field_subpopulation';
-				$field = field_read_field($field_reference_field);
-				$values = field_reference_potential_references($field);
+				//$field = field_read_field($field_reference_field);
+				//$values = field_reference_potential_references($field);
         break;
       case 'USE':
         $field_reference_field = 'field_mono_use';
-				$field = field_read_field($field_reference_field);
-				$values = field_reference_potential_references($field);
+				//$field = field_read_field($field_reference_field);
+				//$values = field_reference_potential_references($field);
         break;
       case 'DOSE':
         $field_reference_field = 'field_mono_doses';
-				$field = field_read_field($field_reference_field);
-				$values = field_reference_potential_references($field);
+				//$field = field_read_field($field_reference_field);
+				//$values = field_reference_potential_references($field);
         break;
       case 'PREP':
         $field_reference_field = 'field_preparation_mtd';
-				$field = field_read_field($field_reference_field);
-				$values = field_reference_potential_references($field);
+				//$field = field_read_field($field_reference_field);
+				//$values = field_reference_potential_references($field);
         break;
       case 'SRC':
         $field_reference_field = 'field_organism_part';
-				$field = field_read_field($field_reference_field);
-				$values = field_reference_potential_references($field);
+				//$field = field_read_field($field_reference_field);
+				//$values = field_reference_potential_references($field);
         break;
 			case 'DF':
         $field_reference_field = 'field_dosage_forms_form_groups';
-				$field = field_read_field($field_reference_field);
-				$values = field_reference_potential_references($field);
+				//$field = field_read_field($field_reference_field);
+				//$values = field_reference_potential_references($field);
         break;
-      Default:
-        $values = array();
-        break;
+      
     }
+	$field = field_info_field($field_reference_field);
+	$values= entityreference_options_list($field);
+
+	foreach($values as $key=>&$value){
+		$value = field_filter_xss($value);
+		$value = strip_tags($value);
+	}
     //drupal_set_message(nhpid_api_dump($values, 'purple', TRUE));
     foreach ($values as $key => $value) {
-			$node_type = '';
-			$code = '';
-			$nid = null;
-      $pattern = '/field_code node:(?P<nid>\d+)/';
-			$matches = array();
-      if (preg_match($pattern,$key, $matches)) {
-        $nid=$matches['nid'];
-			}
-      $key = $type . '-' . $nid;
-			/*
-      $pattern = '/^(?P<node_type>.*: Code) - (?P<code>.*)$/';
-			$matches = array();
-      if (preg_match($pattern,$value, $matches)) {
-        $node_type=$matches['node_type'];
-        $code=$matches['code'];
-			}
-      //$value = $type . '-' . "$code ($node_type)";
-			*/
+			
+      $key = $type . '-' . $key;
+	
       $value = $type . '-' . $value;
       $ret[$key] = $value;
     }

@@ -1,0 +1,35 @@
+<?php
+use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\field\Entity\FieldStorageConfig;
+
+/**
+ * Set dynamic allowed values for the alignment field.
+ *
+ * @param \Drupal\field\Entity\FieldStorageConfig $definition
+ *   The field definition.
+ * @param \Drupal\Core\Entity\ContentEntityInterface|null $entity
+ *   The entity being created if applicable.
+ * @param bool $cacheable
+ *   Boolean indicating if the results are cacheable.
+ *
+ * @return array
+ *   An array of possible key and value options.
+ *
+ * @see options_allowed_values()
+ */
+function field_integer_allowed_values_function(FieldStorageConfig $definition, ContentEntityInterface $entity = NULL, $cacheable) {
+  $options = array();
+  // Add a custom alignment option for Article nodes.
+  if ($entity->bundle() == 'test') {
+    for ($i = 10; $i <= 100; $i = $i + 10){
+	$options[$i] = $i;
+    }
+  }
+  else {
+    for ($i = 1; $i <= 10; $i ++){
+	$options[$i] = $i;
+    }
+  }
+
+  return $options;
+}

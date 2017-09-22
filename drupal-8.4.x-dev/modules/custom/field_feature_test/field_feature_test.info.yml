@@ -1,0 +1,9 @@
+name: 'Field Feature Test'
+description: An module defines an integer field called field_integer.
+type: module
+package: fields
+core: 8.x
+dependencies:
+  - field
+  - node
+  - options
