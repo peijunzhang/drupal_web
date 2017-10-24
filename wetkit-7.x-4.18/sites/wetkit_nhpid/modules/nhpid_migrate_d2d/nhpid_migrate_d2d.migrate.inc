@@ -42,10 +42,10 @@ function nhpid_migrate_d2d_migrate_api() {
   );
   $code_node_group_2 = array(
   'code_chemical_subclass'=>'CodeChemicalSubclass',
-
   'code_ingredient_category'=>'CodeIngredientCategory',
   'code_nmi_purpose' => 'CodeNmiPurpose',
   'code_organism_preparation' => 'CodeOrganismPreparation',
+  'code_organism_part' => 'CodeOrganismPreparation',
   'code_organism_type'=>'CodeOrganismType',
   'code_reference'=>'CodeReference',
   'code_solvent'=>'CodeSolvent',
@@ -181,6 +181,9 @@ function nhpid_migrate_d2d_migrate_api() {
       ),
 	  'nhpid_group_field_collection_group1' => array(
         'title' => t('Field collection group 1'),
+      ),
+	  'nhpid_group_accessory_talbes' => array(
+        'title' => t('Accessory Tables'),
       ),
 	  
       'migrations' => array(),
@@ -522,6 +525,14 @@ function nhpid_migrate_d2d_migrate_api() {
     'class_name' => 'ACPCIMigration',
 	);
 	*/
+	
+	 // table nhpid_excel_drupal_field_mapping
+	$api['migrations']['excel_field_mapping'] = $common_arguments + array(
+    'description' => t('Migrate nhpid_excel_drupal_field_mapping'),
+	'group_name' => 'nhpid_group_accessory_talbes',
+	'excel_field_mapping' => 'Excel field mapping',
+	'class_name' => 'NHPIDExcelFieldMappingMigration',
+  );
 
   return $api;
 }

@@ -30,7 +30,7 @@ function nhpid_schema() {
 		$schema=array();
 		$table_name='field_collection_calculated_value';
 		if(!db_table_exists($table_name)){
-      $schema[$table_name] = array(
+		$schema[$table_name] = array(
 			  'description' => 'TODO: please describe this table!',
 			  'fields' => array(
 			    'nid' => array(
@@ -63,9 +63,40 @@ function nhpid_schema() {
 			);
 
 		}
-    $table_name='nhpid_excel_drupal_field_mapping';
+		$table_name='nhpid_field_length_limit';
 		if(!db_table_exists($table_name)){
-      $schema[$table_name] = array(
+		$schema[$table_name] = array(
+			  'description' => 'TODO: please describe this table!',
+			  
+			'fields' => array(
+			    'node_type' => array(
+			      'description' => 'TODO: please describe this field!',
+			      'type' => 'varchar',
+			      'length' => '100',
+			      'not null' => TRUE,
+			    ),
+			    'length_limit' => array(
+			      'description' => 'TODO: please describe this field!',
+			      'description' => 'TODO: please describe this field!',
+			      'type' => 'int',
+			      'unsigned' => False,
+			      'not null' => TRUE,
+			      'default' => -1,
+			    ),
+			    'field_name' => array(
+			      'description' => 'TODO: please describe this field!',
+			      'type' => 'varchar',
+			      'length' => '150',
+			      'not null' => TRUE,
+			    ),
+			),
+			  'primary key' => array('node_type', 'field_name')
+			);
+
+		}
+		$table_name='nhpid_excel_drupal_field_mapping';
+		if(!db_table_exists($table_name)){
+		$schema[$table_name] = array(
 			  'description' => 'TODO: please describe this table!',
 			  'fields' => array(
 			    'node_type' => array(

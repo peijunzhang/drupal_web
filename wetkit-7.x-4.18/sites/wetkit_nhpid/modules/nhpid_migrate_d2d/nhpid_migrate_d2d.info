@@ -10,7 +10,7 @@ dependencies[] = migrate_d2d
 files[] = nhpid_migrate_d2d.migrate.inc
 files[] = node.inc
 files[] = field_collection.inc
-
+files[] = accessory_tables.inc
 
 
 

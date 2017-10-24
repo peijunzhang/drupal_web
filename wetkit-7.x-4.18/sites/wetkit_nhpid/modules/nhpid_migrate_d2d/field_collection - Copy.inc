@@ -135,6 +135,7 @@ class NHPIDFCMigration extends FCMigration {
 
     
 	$this->addFieldMapping('host_entity_id', 'host_entity_id');
+	$this->addFieldMapping('revision_id', 'revision_id');
 	//$this->addFieldMapping('field_legacy_nid', 'nid') ->description('We have a common field to save the D6 nid');
 	$this->addFieldMapping('field_legacy_item_id', 'item_id') ->description('We have a common field to save the D6 nid');
 	    
@@ -145,11 +146,28 @@ class NHPIDFCMigration extends FCMigration {
    * @return QueryConditionInterface
    */
   protected function query() {
-    $query = Database::getConnection('default', $this->sourceConnection)
+    $query = Database::getConnection('legancy', $this->sourceConnection)
 		->select('field_collection_item', 'c')
 		->condition('field_name', $this->source_type);
 	
+	foreach($this -> destination_fields as $field_name => $label){
+		$query->leftJoin('field_data_' . $field_name, $field_name, $field_name .'.entity_id = c.item_id');
+	}
+	
 	$query->fields('c', array('item_id', 'revision_id', 'field_name', 'archived'));
+	
+	foreach($this -> destination_fields as $field_name => $label){
+		$field=field_info_field($field_name);
+		if($field['type'] == 'entityreference') {
+			$storage_field=$field_name . '_entity_id';
+		}
+		else{
+			$storage_field=$field['storage']['details']['sql']['FIELD_LOAD_CURRENT']['field_data_' . $field_name]['value'];
+		}
+		$query->addField($field_name, $storage_field, $field_name);
+		
+	}
+	
 	//print_r($query->execute()->rowCount());
 	//print_r($query->__toString());
     return $query;
@@ -160,36 +178,6 @@ class NHPIDFCMigration extends FCMigration {
 	if (parent::prepareRow($row) === FALSE) {
       return FALSE;
     }
-	// field values
-	foreach($this -> destination_fields as $field_name => $label){
-		$legacy_field_config = Database::getConnection('legacy', $this->sourceConnection)
-                 ->select('field_config', 'c')
-                 ->fields('c', array('field_name', 'data', 'module'))
-				 ->condition('field_name', $field_name)
-                 ->execute()
-                 ->fetchObject();
-		$module = $legacy_field_config->module;
-		$data = unserialize($legacy_field_config->data);
-		if($module == 'entityreference') {
-			$storage_field=$field_name . '_entity_id';
-		}
-		elseif($module == 'field_reference') {
-			$storage_field=$data['storage']['details']['sql']['FIELD_LOAD_CURRENT']['field_data_' . $field_name]['entity_id'];
-		}
-		else{
-			$storage_field=$data['storage']['details']['sql']['FIELD_LOAD_CURRENT']['field_data_' . $field_name]['value'];
-		}
-		
-		$result=Database::getConnection('default', $this->sourceConnection)
-		->select('field_data_' . $field_name, $field_name)
-		->fields($field_name, array($storage_field, 'entity_id'))
-		->condition('entity_id', $row->item_id)
-		->execute();
-		while($record = $result->fetchObject()) {
-       		$row->$field_name[]=$record->$storage_field;
-		}
-		
-	}
 	
 	// Mapping field collection item id
 	$old_field_collection_field_table = 'field_data_' . $this->source_type;

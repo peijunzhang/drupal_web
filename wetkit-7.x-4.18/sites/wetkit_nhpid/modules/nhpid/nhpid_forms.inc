@@ -8,66 +8,80 @@ global $fields_no_limit;
 $fields_additional_detail = array('field_additional_detail_e', 'field_additional_detail_f');
 $fields_restriction = array('field_restriction_desc_e', 'field_restriction_desc_f');
 $fields_no_limit = array('field_old_rationale');
-
+define('NHPID_FILED_LENGTH_LIMIT_TABLE', 'nhpid_field_length_limit');
+define('NHPID_EXCEL_COLUMN_MAPPING_TABLE', 'nhpid_excel_drupal_field_mapping');
 /***
  * Field allowed length setting
  */   
+
 function nhpid_field_length_limit_form($form, &$form_state=NULL) {
   global $fields_additional_detail;
   global $fields_restriction;
   global $fields_no_limit;
+  $table_name=NHPID_FILED_LENGTH_LIMIT_TABLE;
   $default_limit_general = variable_get('nhpid_field_length_limit_default_general', 200);
-  $default_limit_addtional_detail = variable_get('nhpid_field_length_limit_default_additional_detail', 1000);
+  $default_limit_additional_detail = variable_get('nhpid_field_length_limit_default_additional_detail', 1000);
   $default_limit_restriction = variable_get('nhpid_field_length_limit_default_restriction', 2000);
   $default_no_limit = -1;
+  $fields_not_checked=array('field_legacy_nid'=>array(),'field_parent_space'=>array(),'field_workflow'=>array());
  
   $form['#tree']=true;
+
   $form['help'] = array(
     '#type' => 'item',
-    '#markup' => t("This setting defines the max allowed length of fields. Default values is $default_limit_addtional_detail for <em>" . implode(', ', $fields_additional_detail) ."</em>, $default_limit_restriction for <em>" . implode(', ', $fields_restriction) ."</em>, no limit for <em>" . implode(', ', $fields_no_limit) . "</em>, $default_limit_general for others" ),
+    '#markup' => t("This setting defines the max allowed length of fields. Default values is $default_limit_additional_detail for <em>" . implode(', ', $fields_additional_detail) ."</em>, $default_limit_restriction for <em>" . implode(', ', $fields_restriction) ."</em>, no limit for <em>" . implode(', ', $fields_no_limit) . "</em>, $default_limit_general for others" ),
   );
 
   $types = get_all_nhpid_data_node_types();
-  foreach ($types as $node_type => $node_name) {
-    $fields = get_node_type_field_name_title_mapping($node_type);
-      $form[$node_type] = array(
-        '#title' => $node_name,
-        '#type' => 'fieldset', 
-        '#collapsible' => TRUE, 
-        '#collapsed' => True,
-      );
-      $limit_variable_name = 'nhpid_field_length_limits_' . $node_type;
-			$limits = variable_get($limit_variable_name, array());
-      foreach ($fields as $key => $name) {
-				$default=null;
-				if (in_array($key, $fields_additional_detail)) {
-          $default = $default_limit_additional_detail;
-        }
-        else if (in_array($key, $fields_restriction)) {
-          $default = $default_limit_restriction;
-        }
-        else if(in_array($key, $fields_no_limit)) {
-          $default = $default_no_limit;
-        }
-        else {
-          $default = $default_limit_general;
-        }
-        //drupal_set_message(nhpid_api_dump($default, 'red', TRUE));
-        //drupal_set_message(nhpid_api_dump($limits[$key], 'blue', TRUE));
-				$limit = (isset($limits[$key]) and $limits[$key])? $limits[$key]:$default;
-        $form[$node_type][$key] = array(
-          '#type' => 'textfield', 
-          '#title' => "$name", 
-          '#default_value' => $limit,
-          '#maxlength' => 5,
-          '#size' => 5,
-        );
-      }
-    }
-  $form['types'] = array(
-  '#type' => 'value',
-  '#value' => $types,
+  //$types = array_slice($types, 0, 1);
+  $form['node_types']=array(
+		'#type' => 'value',
+		'#value' => $types,
   );
+  foreach ($types as $node_type => $node_name) {
+		$fields = get_node_type_field_name_title_mapping($node_type);
+		$fields = array_diff_key($fields,$fields_not_checked);
+		$form[$node_type] = array(
+			'#title' => $node_name,
+			'#type' => 'fieldset',
+			'#theme' => 'nhpid_field_length_limit_form_wrapper',
+			//'#theme_wrappers' => array('nhpid_field_length_limit_form_wrapper'),			
+			'#collapsible' => TRUE, 
+			'#collapsed' => True,
+		);
+
+		$sql = db_select($table_name, 'x')
+				->fields('x', array('field_name', 'node_type','length_limit'))
+				->condition('node_type', $node_type)
+				->orderBy('field_name')
+				->execute();
+		$data = $sql ->fetchAllAssoc('field_name');
+
+		foreach ($fields as $key => $name) {
+			$default=null;
+			if (in_array($key, $fields_additional_detail)) {
+			$default = $default_limit_additional_detail;
+			}
+			else if (in_array($key, $fields_restriction)) {
+				$default = $default_limit_restriction;
+			}
+			else if(in_array($key, $fields_no_limit)) {
+				$default = $default_no_limit;
+			}
+			else {
+				$default = $default_limit_general;
+			}
+			$limit = isset($data[$key]->length_limit)? $data[$key]->length_limit:$default;
+			$form[$node_type][$key] = array(
+			  '#type' => 'textfield', 
+			  //'#title' => "$name", 
+			  '#default_value' => $limit,
+			  '#maxlength' => 5,
+			  '#size' => 5,
+			);
+		}
+    }
+  
   $form['submit'] = array(
   '#type' => 'submit',
   '#value' => t('Save Field Length Limit Field Setting')
@@ -94,7 +108,7 @@ function nhpid_field_length_limit_form($form, &$form_state=NULL) {
   $form['defaults']['default_additional_detail'] = array(
     '#type' => 'textfield', 
     '#title' => "New default for fields <em>" . implode(', ', $fields_additional_detail) .'</em>', 
-    '#default_value' => $default_limit_addtional_detail,
+    '#default_value' => $default_limit_additional_detail,
     '#maxlength' => 5,
     '#size' => 5,
   );
@@ -106,53 +120,65 @@ function nhpid_field_length_limit_form($form, &$form_state=NULL) {
     '#size' => 5,
   );
   //drupal_set_message(nhpid_api_dump($form, 'red', TRUE));
+  //dpm($form);
   return $form;  
 }
 
 function nhpid_field_length_limit_form_submit($form, &$form_state) {
-  //drupal_set_message(nhpid_api_dump($form_state['clicked_button']['#id'], 'red', TRUE));
+  //dpm($form_state['values']);
   global $fields_additional_detail;
   global $fields_restriction;
   global $fields_no_limit;
-  $form_state['storage']['values'] = $form_state['values'];
-  if ($form_state['storage']['values']['defaults']['default_general']) {
-    variable_set('nhpid_field_length_limit_default_general', $form_state['storage']['values']['defaults']['default_general']);
-  }
-   if ($form_state['storage']['values']['defaults']['default_additional_detail']) {
-    variable_set('nhpid_field_length_limit_default_additional_detail', $form_state['storage']['values']['defaults']['default_additional_detail']);
-  }
-   if ($form_state['storage']['values']['defaults']['default_restriction']) {
-    variable_set('nhpid_field_length_limit_default_restriction', $form_state['storage']['values']['defaults']['default_restriction']);
-  }
+  $node_types = $form_state['values']['node_types'];
   
-  foreach ($form_state['storage']['values']['types'] as $node_type => $node_name) {
-    $limit_variable_name = 'nhpid_field_length_limits_' . $node_type;
-		$limits = array();
-		foreach ($form_state['storage']['values'][$node_type] as $field_name => $limit) {
-      if ($form_state['clicked_button']['#id'] == 'edit-submit'){
-				$limits[$field_name]=$limit;
-			}
-			elseif($form_state['clicked_button']['#id'] == 'edit-restore-default'){
-        $default=null;
+  //$form_state['storage']['values'] = $form_state['values'];
+  if ($form_state['values']['defaults']['default_general']) {
+    variable_set('nhpid_field_length_limit_default_general', $form_state['values']['defaults']['default_general']);
+  }
+   if ($form_state['values']['defaults']['default_additional_detail']) {
+    variable_set('nhpid_field_length_limit_default_additional_detail', $form_state['values']['defaults']['default_additional_detail']);
+  }
+   if ($form_state['values']['defaults']['default_restriction']) {
+    variable_set('nhpid_field_length_limit_default_restriction', $form_state['values']['defaults']['default_restriction']);
+  }
+	$operations = array();
+  	foreach ($node_types as $node_type => $node_name) {
+		foreach ($form_state['values'][$node_type] as $field_name => $limit) {
+			if($form_state['clicked_button']['#id'] == 'edit-restore-default'){
+				$default=null;
 				if (in_array($field_name, $fields_additional_detail)) {
-          $default = $form_state['storage']['values']['defaults']['default_additional_detail'];
-        }
-        else if (in_array($field_name, $fields_restriction)) {
-          $default = $form_state['storage']['values']['defaults']['default_restriction'];
-        }
-        else if(in_array($field_name, $fields_no_limit)) {
-          $default = -1;
-        }
-        else {
-          $default = $form_state['storage']['values']['defaults']['default_general'];
-        }
-        $limits[$field_name]=$default;
+					$default = $form_state['values']['defaults']['default_additional_detail'];
+				}
+				else if (in_array($field_name, $fields_restriction)) {
+					$default = $form_state['values']['defaults']['default_restriction'];
+				}
+				else if(in_array($field_name, $fields_no_limit)) {
+					$default = -1;
+				}
+				else {
+					$default = $form_state['values']['defaults']['default_general'];
+				}
+				$limit=$default;
 			}
-    }
-		variable_set($limit_variable_name, $limits);
-
+			$item=array('node_type'=>$node_type, 'field_name'=>$field_name, 'limit'=>$limit);
+			$operations[] = array('_nhpid_reset_field_length_limit', array($item));
+		}
 	}
+	
+	
+	$batch = array(
+	  'operations' => $operations,
+	  'finished' => 'batch_re_gnerate_title_body_finished',
+	  // We can define custom messages instead of the default ones.
+	  'title' => t('Reset field length limit...'),
+	  'init_message' => t('Starting.'),
+	  'progress_message' => t('Processed @current out of @total items.'),
+	  'error_message' => t('Resetting field length has encountered an error.'),
+	  'file' => drupal_get_path('module', 'nhpid'). '/nhpid_forms.inc',
+	);
 
+	batch_set($batch);
+	batch_process();
 }
 /***
  * Field allowed requiredness setting
@@ -200,28 +226,26 @@ function nhpid_required_field_form($form, &$form_state=NULL) {
 }
 
 function nhpid_required_field_form_submit($form, &$form_state) {
-  //drupal_set_message(nhpid_api_dump($form_state['values'] , 'blue', TRUE));
-	$form_state['storage']['values'] = $form_state['values'];
-	$node_types = $form_state['storage']['values']['node_types'];
+	//dpm($form_state['values']);
+	$node_types = $form_state['values']['node_types'];
   if ($form_state['clicked_button']['#id'] == 'edit-submit') {
     //node_types_rebuild();
     foreach ($node_types as $node_type => $label) {
-			foreach($form_state['storage']['values'][$node_type] as $field_name => $value){
-		    $instance = field_info_instance('node', $field_name, $node_type);
-	      if ($instance['required'] != $value){
-          $instance['required'] = $value;
-          field_update_instance($instance);
-				}
+		foreach($form_state['values'][$node_type] as $field_name => $value){
+			$instance = field_info_instance('node', $field_name, $node_type);
+			if ($instance['required'] != $value){
+				$instance['required'] = $value;
+				field_update_instance($instance);
 			}
 		}
-
+	}
   }
 }
 /***
  * Field conditionally requiredness setting
  */ 
 function nhpid_conditionally_required_field_form($form, &$form_state=NULL) {
-  $allowed_field_types = array('text', 'list_text', 'text_long', 'number_decimal', 'number_integer', 'number_float',  'date', 'datestamp', 'datetime', 'flexifield', 'link', 'field_reference' ); ## must be in lower case
+  $allowed_field_types = array('text', 'list_text', 'text_long', 'number_decimal', 'number_integer', 'number_float',  'date', 'datestamp', 'datetime', 'flexifield', 'link', 'entityreference' ); ## must be in lower case
 	$$form['help'] = array(
     '#type' => 'item',
     '#markup' => t('This setting defines conditionally required NHPID data node fields. Conditionally required fields are fields which reuiredness is depended on other fields.' ),
@@ -261,7 +285,7 @@ function nhpid_conditionally_required_field_form($form, &$form_state=NULL) {
     $form[$node_type]['fields'] = array(
       '#title' => 'Available fields (only field types: ' . implode(', ', $allowed_field_types) . ')',
       '#type' => 'item', 
-      '#markup' => theme_table(array('header' => $header, 'rows' => $rows, 'attributes' => Null, 'caption' => Null,'colgroups' => Null,'sticky' => True,'empty' => '',)),
+      '#markup' => theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => Null, 'caption' => Null,'colgroups' => Null,'sticky' => True,'empty' => '',)),
     );
     $required = "nhpid_" . $node_type  . "_is_conditionally_required";
     $default = variable_get($required, '');
@@ -290,7 +314,7 @@ function nhpid_conditionally_required_field_form($form, &$form_state=NULL) {
   return $form;  
 }
 function nhpid_conditionally_required_field_form_validate($form, &$form_state) {
-  $form_state['storage']['values'] = $form_state['values'];
+  //$form_state['values'] = $form_state['values'];
   
   if ($form_state['clicked_button']['#id'] == 'edit-submit'){
     foreach ($form_state['values'] as $key => $value) {
@@ -315,7 +339,7 @@ function nhpid_conditionally_required_field_form_validate($form, &$form_state) {
         }
         
         $type_fields = get_node_type_field_name_title_mapping($node_type);
-        $allowed_fields = $form_state['storage']['values']["$node_type" . "_allowed_fields"];
+        $allowed_fields = $form_state['values']["$node_type" . "_allowed_fields"];
        
         //drupal_set_message(nhpid_api_dump($allowed_fields , 'red', TRUE));
         //drupal_set_message(nhpid_api_dump($node_type , 'red', TRUE));
@@ -335,7 +359,7 @@ function nhpid_conditionally_required_field_form_validate($form, &$form_state) {
 }
 
 function nhpid_conditionally_required_field_form_submit($form, &$form_state) {
-  $form_state['storage']['values'] = $form_state['values'];
+  //$form_state['storage']['values'] = $form_state['values'];
   foreach ($form_state['storage']['values'] as $key => $value) {
     if (stristr($key, '_is_conditionally_required')) {
       if ($form_state['clicked_button']['#id'] == 'edit-submit') {
@@ -605,84 +629,7 @@ function nhpid_auto_title_form($form, $form_state=NULL) {
     '#type' => 'item',
     '#markup' => t('Drupal NHPID can automatically fill the title and body fields of newly created or modified nodes. This setting defines which fields will be used as values of the title and body fields of the node type.'),
   );
-	//return $form;
-  $types = get_all_nhpid_data_node_types();
-	$table_select_types = array();
-  foreach ($types as $type => $value) {
-		$table_select_types[$type]=array('type'=>$value);
-  }
-  foreach ($types as $node_type => $node_name) {
-		$fields_info = get_all_fields_of_node_type($node_type);
-		$fields = array();
-    $allowed_types = array('text', 'text_long', 'list_text', 'computed', 'field_reference');
-		foreach($fields_info as $field => $field_info){
-      if ((in_array($field_info['type'],  $allowed_types))){
-				$required = $field_info['required']? ', required' : null;
-	      $type = $field_info['type'];
-	      $label = $field_info['label'];
-	      $fields[$field]= "$field ($label: $type$required)";
-			}
-		}
-   
-		if (empty($fields)) continue;
-    $fields2 = array_merge(array('' => '--none--'), $fields);
-    $node_title_body_key = 'nhpid_title_body_fields_' . $node_type;
-    $node_title_body_fields = variable_get($node_title_body_key, '');
-    $default_title1 = $node_title_body_fields['title_field1'] ? $node_title_body_fields['title_field1'] : '';
-    $default_title2 = $node_title_body_fields['title_field2'] ? $node_title_body_fields['title_field2'] : '';
-    $default_title3 = $node_title_body_fields['title_field3'] ? $node_title_body_fields['title_field3'] : '';
-    $default_body = $node_title_body_fields['body_field'] ? $node_title_body_fields['body_field'] : '';
-    //$default_title1 = $node_title_body_fields['title_field1'] ? $node_title_body_fields['title_field1'] : variable_get('nhpid_' . $node_type .'_title_field1');
-    //$default_title2 = $node_title_body_fields['title_field2'] ? $node_title_body_fields['title_field2'] : variable_get('nhpid_' . $node_type .'_title_field2');;
-    //$default_body = $node_title_body_fields['body_field'] ? $node_title_body_fields['body_field'] : variable_get('nhpid_' . $node_type .'_body_field');;
-      $form[$node_type]['node_name'] = array(
-        '#type' => 'item', 
-        '#title' => $node_name,
-       );
-      $form[$node_type]['node_type'] = array(
-        '#type' => 'value',
-        '#value' => $node_type,
-      );
-      $form[$node_type]['node_title_body_key'] = array(
-        '#type' => 'value',
-        '#value' => $node_title_body_key,
-      );
-      
-      $form[$node_type]['node_title_field1'] = array(
-        '#type' => 'select', 
-        '#title' => t('Title field1'), 
-        '#default_value' => $default_title1,
-        '#options' => $fields,
-        '#required' => !empty($fields),
-        '#description' => t('Select a node field.'),
-       );
-      $form[$node_type]['node_title_field2'] = array(
-        '#type' => 'select', 
-        '#title' => t('Title field2'), 
-        '#default_value' => $default_title2,
-        '#options' => $fields2,
-        '#description' => t('Select a node field.'),
-      );
-      $form[$node_type]['node_title_field3'] = array(
-        '#type' => 'select',
-        '#title' => t('Title field3'),
-        '#default_value' => $default_title3,
-        '#options' => $fields2,
-        '#description' => t('Select a node field.'),
-      );
-      $form[$node_type]['node_body_field'] = array(
-        '#type' => 'select', 
-        '#title' => t('Body field'), 
-        '#default_value' => $default_body,
-        '#options' => $fields2,
-        '#description' => t('Select a node field.'),
-      );
-    }
-    
-  $form['submit'] = array(
-  '#type' => 'submit',
-  '#value' => t('Save Auto Title Setting')
-  );
+
   $default_types = array();
   foreach ($types as $type => $value) {
     $default_types[$type] = $type;
@@ -727,14 +674,8 @@ function nhpid_auto_title_form_validate($form, &$form_state) {
 }
 function nhpid_auto_title_form_submit(&$form, &$form_state) {
   //drupal_set_message(nhpid_api_dump($form_state, 'red', TRUE));
-	switch ($form_state['clicked_button']['#id']) {
-  case 'edit-submit':
-    foreach ($form_state['values'] as $node_type) {
-      if (isset($node_type['node_type'])){
-        variable_set($node_type['node_title_body_key'], array('title_field1' => $node_type['node_title_field1'],'title_field2' => $node_type['node_title_field2'],'title_field3' => $node_type['node_title_field3'],'body_field' => $node_type['node_body_field']));
-      }
-    }
-    break;
+  switch ($form_state['clicked_button']['#id']) {
+  
   case 'edit-re-generate-title-body-uncheck-all':
         $form_state['values']['re-generate-title-body']['node_types'] = 'none';
         break;
@@ -767,7 +708,7 @@ function nhpid_auto_title_form_submit(&$form, &$form_state) {
   $form_state['storage']['values'] = $form_state['values'];
 }
 
-function re_generate_title_body($node_type, &$context) {
+function _nhpid_re_generate_title_body($node_type, &$context) {
   $sql = "SELECT nid FROM {node} WHERE type=:type order by nid desc";
   $result = db_query($sql, array(':type' => $node_type));
   $sql_count = "SELECT count(nid) FROM {node} WHERE type=:type order by nid desc";
@@ -777,20 +718,9 @@ function re_generate_title_body($node_type, &$context) {
     $context['sandbox']['current_node'] = 0;
     $context['sandbox']['max'] = $count;
   }
-  //drupal_set_message(nhpid_api_dump($sql, 'red', TRUE));
   foreach ($result as $row) {
     $node = node_load($row->nid);
-    //drupal_set_message(nhpid_api_dump($node, 'red', TRUE));
-    $new_title = nhpid_api_generate_node_title($node, 'nhpid');
-    $new_body = nhpid_api_generate_node_body($node, 'nhpid');
-    
-    //drupal_set_message(nhpid_api_dump($title, 'blue', TRUE));
-		$sql = 'update {node} set title = :title where nid = :nid';
-		db_query($sql, array(':title' => $new_title, ':nid' => $node -> nid));
-    $sql = 'update {field_data_body} set body_value = :body where entity_type =:entity_type and entity_id =:nid and deleted=0 and delta=0 and language=:lan';
-		db_query($sql, array(':body' => $new_body, ':entity_type' => 'node', ':nid' => $node -> nid, ':lan' => $node -> language));
-    //node_save($node);
-    //drupal_set_message(nhpid_api_dump($node, 'blue', TRUE));
+    node_save($node);
     $context['results'][] = $node->nid . ' : ' . check_plain($node->title);
     $context['sandbox']['progress']++;
     $context['sandbox']['current_node'] = $node->nid;
@@ -802,6 +732,71 @@ function re_generate_title_body($node_type, &$context) {
   }
 
 
+}
+function _nhpid_reset_field_length_limit($limit, &$context) {
+	$table_name=NHPID_FILED_LENGTH_LIMIT_TABLE;
+	$count=count($limit);
+  if (!isset($context['sandbox']['progress'])) {
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['current_node'] = 0;
+    $context['sandbox']['max'] = $count;
+  }
+
+	$node_type=$limit['node_type'];
+	$field_name=$limit['field_name'];
+	$length_limit=$limit['limit'];
+	db_merge($table_name)
+	->key(array('field_name' => $field_name, 'node_type' => $node_type))
+	->fields(array(
+		  'field_name' => $field_name, 
+		  'node_type' => $node_type,
+		  'length_limit' => $length_limit,
+	))
+	->execute();
+
+    $context['results'][] = "$node_type : $field_name";
+    $context['sandbox']['progress']++;
+    $context['message'] = "$node_type : $field_name is done.";
+
+
+   if ($context['sandbox']['progress'] != $context['sandbox']['max']) {
+    //$context['finished'] = ($context['sandbox']['progress'] >= $context['sandbox']['max']);
+  }
+}
+function _nhpid_map_excel_column($item, $table_name, &$context) {
+	$count=count($item);
+	if (!isset($context['sandbox']['progress'])) {
+	$context['sandbox']['progress'] = 0;
+	$context['sandbox']['current_node'] = 0;
+	$context['sandbox']['max'] = $count;
+	}
+
+	$node_type=$item['node_type'];
+	$excel_field_name=$item['excel_field_name'] ? $item['excel_field_name'] : 'ND';
+	$drupal_field_name=$item['drupal_field_name'];
+	$col_order=$item['col_order']!==null ? $item['col_order'] : 100;
+	$mapping_field_name=$item['drupal_field_name'];
+	
+	db_merge($table_name)
+		->key(array('drupal_field_name' => $drupal_field_name, 'node_type' => $node_type))
+		->fields(array(
+			  'drupal_field_name' => $drupal_field_name, 
+			  'node_type' => $node_type,
+			  'excel_field_name' => $excel_field_name,
+			  'mapping_field_name' => $drupal_field_name,
+			  'col_order' => $col_order,
+		))
+		->execute();
+		  
+
+    $context['results'][] = "$node_type : $excel_field_name";
+    $context['sandbox']['progress']++;
+    $context['message'] = "$node_type : $excel_field_name is done.";
+
+
+   if ($context['sandbox']['progress'] != $context['sandbox']['max']) {
+    //$context['finished'] = ($context['sandbox']['progress'] >= $context['sandbox']['max']);
+  }
 }
 
 function batch_re_gnerate_title_body_finished($success, $results, $operations) {
@@ -823,35 +818,152 @@ function batch_re_gnerate_title_body_finished($success, $results, $operations) {
  * Field dependency setting
  */ 
 function nhpid_field_dependency_form($form, &$form_state=NULL) {
-  $all_nhpid_types = get_all_nhpid_data_node_types();
+	$all_nhpid_types = get_all_nhpid_data_node_types();
 	$referring_nhpid_types =$all_nhpid_types;
-  $all_referring_fields = array();
-  $all_fc_referring_fields = array();
+	$all_referring_fields = array();
+	$all_possible_referred_fields = field_info_field_map();
+	$variable_name='nhpid_entityreference_fields_settings';
+	$settings=variable_get($variable_name, null);
+	foreach($all_possible_referred_fields as $field_name => $data){
+		if ($data['type'] != 'entityreference'){
+			continue;
+		}
+		if ($field_name =='field_parent_space'){
+			continue;
+		}
+
+		if (isset($data['bundles']['field_collection_item'])){
+			//dpm($data);
+			foreach($data['bundles']['field_collection_item'] as $item){
+				if (strpos($item, 'field_fc_')===0){
+					$instances = field_info_instances('field_collection_item',$item);
+					//dpm($instances);
+					foreach ($instances as $fc_field_name => $intance){
+						if ($intance['display']['default']['module'] != 'entityreference'){
+							continue;
+						}
+						$all_referring_fields[$fc_field_name]=$fc_field_name;
+					}
+					
+				}
+					
+			}
+		}
+		if (isset($data['bundles']['node'])){
+			foreach($data['bundles']['node'] as $bundle){
+				if (isset($all_nhpid_types[$bundle])){
+					$all_referring_fields[$field_name]=$field_name;
+				}
+					
+			}
+		}
+		
+	}
+	ksort($all_referring_fields);
+	  $form['#tree'] = TRUE;
+	  $form['help'] = array(
+		'#type' => 'item',
+		'#markup' => t("This setting defines settings used by entityreference fields. " ),
+	  );
+	  $form['nhpid_entityreference_referred_fields'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Entity Reference field referring fields'),
+		'#collapsible' => TRUE,
+		'#collapsed' => False,
+	  );
+
+	foreach($all_referring_fields as $referring_field => $referring_field_name){
+		$field_info = field_info_field($referring_field);
+		$form['nhpid_entityreference_referred_fields'][$referring_field] = array(
+			'#type' => 'fieldset',
+			'#title' => $referring_field_name,
+			'#theme' => 'nhpid_referred_field_form_wrapper',
+			'#collapsible' => TRUE,
+			'#collapsed' => true,
+		);
+		$referred_types = array();
+		if ($field_info['settings']['handler'] == 'base'){
+			foreach($field_info['settings']['handler_settings']['target_bundles'] as $type => $val){
+				$node_type_names = node_type_get_names();
+				$referred_types[$type] = $node_type_names[$type] . ' (' . $type . ')';
+			}
+		}
+		if ($field_info['settings']['handler'] == 'views'){
+			$view_name=$field_info['settings']['handler_settings']['view']['view_name'];
+			$display_name=$field_info['settings']['handler_settings']['view']['display_name'];
+			$view = views_get_view($view_name);
+			$filter_name= 'type';
+			$display = $view->display[$display_name];
+			foreach($display->display_options['filters'][$filter_name]['value'] as $type => $val){
+				$node_type_names = node_type_get_names();
+				$referred_types[$type] = $node_type_names[$type] . ' (' . $type . ')';
+			}
+		}
+		
+		foreach($referred_types as $referred_type=>$referred_type_name){
+		
+			$refered_type_fields = array();
+			foreach(get_all_fields_of_node_type($referred_type) as $refered_field_name => $info){
+				$refered_type_fields[$refered_field_name]=$info['label'];
+			}
+			$referred_fields=isset($settings[$referring_field][$referred_type])? $settings[$referring_field][$referred_type] : array();
+			//$referred_fields = empty($form_state['values']['nhpid_entityreference_referred_fields'][$referring_field]['field'])? array():$form_state['values']['nhpid_entityreference_referred_fields'][$referring_field]['field'];
+			
+			$form['nhpid_entityreference_referred_fields'][$referring_field][$referred_type] = array(
+				'#type' => 'select',
+				'#title' => t($referred_type_name),
+				'#options' => $refered_type_fields,
+				'#default_value' => $referred_fields,
+			);
+		}
+	}
+	$form['nhpid_entityreference_referred_fields']['all_referring_fields']=array(
+		'#type' => 'value',
+		'#value' => $all_referring_fields,
+	 );
+	
+	$form['nhpid_entityreference_referred_fields']['save']=array(
+		'#type' => 'submit',
+		'#value' => t('Save'),
+		//'#access' => isset($form_state['clicked_button']) and $form_state['clicked_button']['#id'] == 'edit-nhpid-field-reference-referred-fields-update-referring-type',
+		'#name' => "nhpid_entityreference_referred_fields_save",
+		'#limit_validation_errors' => array(array('nhpid_entityreference_referred_fields')),
+		'#submit' => array('nhpid_field_dependency_form_submit'),
+	  );
+
+	
+	return $form;
+}
+function nhpid_field_dependency_form_($form, &$form_state=NULL) {
+	$all_nhpid_types = get_all_nhpid_data_node_types();
+	$referring_nhpid_types =$all_nhpid_types;
+	$all_referring_fields = array();
+	$all_fc_referring_fields = array();
 	$all_possible_referred_fields = array();
 	foreach($all_nhpid_types as $nhpid_type => $name){
-    $type_fields = get_all_fields_of_node_type($nhpid_type);
+		$type_fields = get_all_fields_of_node_type($nhpid_type);
 		foreach ($type_fields as $field => $field_info){
-      //drupal_set_message(nhpid_api_dump($field_info, 'blue', TRUE));
-			if ($field_info['type'] == 'field_reference') {
-        $all_referring_fields[$nhpid_type][$field]="$field (". $field_info['label'] . ")";
+			if ($field_info['type'] == 'entityreference') {
+				$all_referring_fields[$nhpid_type][$field]="$field (". $field_info['label'] . ")";
 			}
 			if($field_info['type'] == 'text' or $field_info['type'] == 'text_long'){ //only text and text_long fields can be a referred field
-        $all_possible_referred_fields[$nhpid_type][$field]="$field (". $field_info['label'] . ")";
+				$all_possible_referred_fields[$nhpid_type][$field]="$field (". $field_info['label'] . ")";
 			}
 			if($field_info['type'] == 'field_collection') {
-        
+		
 				$fc_field_instances = field_info_instances('field_collection_item', $field);
 				foreach($fc_field_instances as $fc_field => $fc_field_instance){
 					$fc_field_type = nhpid_api_get_field_type($fc_field);
-          if ($fc_field_type == 'field_reference') {
-		        $all_fc_referring_fields[$nhpid_type][$field]['fields'][$fc_field]="$fc_field(" . $fc_field_instance['label'] .')'  ;
-            $all_fc_referring_fields[$nhpid_type][$field]['label']="$field (". $field_info['label'] . ")";
+					if ($fc_field_type == 'entityreference') {
+					$all_fc_referring_fields[$nhpid_type][$field]['fields'][$fc_field]="$fc_field(" . $fc_field_instance['label'] .')'  ;
+					$all_fc_referring_fields[$nhpid_type][$field]['label']="$field (". $field_info['label'] . ")";
 					}
 				}
 			}
 		}
-    if (empty($all_referring_fields[$nhpid_type]) and empty($all_fc_referring_fields[$nhpid_type])) unset($referring_nhpid_types[$nhpid_type]);
+	if (empty($all_referring_fields[$nhpid_type]) and empty($all_fc_referring_fields[$nhpid_type])) 	unset($referring_nhpid_types[$nhpid_type]);
 	}
+	dpm($referring_nhpid_types);
   $form['#tree'] = TRUE;
   $form['help'] = array(
     '#type' => 'item',
@@ -861,13 +973,15 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
     '#type' => 'fieldset',
     '#title' => t('Referred fields'),
     '#collapsible' => TRUE,
-    '#collapsed' => TRUE Xor ($form_state['clicked_button']['#id'] == 'edit-nhpid-field-reference-referred-fields-update-referring-type'),
+    '#collapsed' => TRUE Xor (isset($form_state['clicked_button']) and $form_state['clicked_button']['#id'] == 'edit-nhpid-field-reference-referred-fields-update-referring-type'),
   );
 	$form['nhpid_field_reference_referred_fields']['help'] = array(
     '#type' => 'item',
     '#markup' => t("Please notice field_reference setting is global a setting, meaning if you change a field of a content type, you change all content types containing the field. Please make sure the referred fields include all fields which are referred by the field in all content types." ),
   );
-  $referring_type = empty($form_state['values']['nhpid_field_reference_referred_fields']['referring_type'])? array_shift(array_keys($referring_nhpid_types)):$form_state['values']['nhpid_field_reference_referred_fields']['referring_type'];
+  
+  $array_keys=array_keys($referring_nhpid_types);
+  $referring_type = empty($form_state['values']['nhpid_field_reference_referred_fields']['referring_type'])? array_shift($array_keys):$form_state['values']['nhpid_field_reference_referred_fields']['referring_type'];
   $form['nhpid_field_reference_referred_fields']['referring_type'] = array(
 	    '#type' => 'select',
 	    '#title' => t("Referring Node Type (Reffering Field)"),
@@ -879,17 +993,19 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
     '#value' => t('Show referred fields for selected referring node type'),
     '#name' => "nhpid_field_reference_referred_fields_update_referring_type",
     '#limit_validation_errors' => array(array('nhpid_field_reference_referred_fields', 'referring_type')),
-		'#submit' => array('nhpid_field_dependency_form_submit'),
+	'#submit' => array('nhpid_field_dependency_form_submit'),
   );
 	
   $form['nhpid_field_reference_referred_fields']['fields']=array(
     '#type' => 'value',
     '#value' => $all_referring_fields[$referring_type],
   );
-  $form['nhpid_field_reference_referred_fields']['fc_fields']=array(
-    '#type' => 'value',
-    '#value' => $all_fc_referring_fields[$referring_type],
-  );
+  if (isset($all_fc_referring_fields[$referring_type])){
+	  $form['nhpid_field_reference_referred_fields']['fc_fields']=array(
+		'#type' => 'value',
+		'#value' => $all_fc_referring_fields[$referring_type],
+	  );
+  }
 	$referring_fields = $all_referring_fields[$referring_type];
 	foreach($referring_fields as $referring_field => $referring_field_name){
 		$referring_field_field = field_info_field($referring_field);
@@ -932,7 +1048,6 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
 	    '#collapsible' => TRUE,
 	    '#collapsed' => TRUE,
 	  );
-    //drupal_set_message(nhpid_api_dump($nhpid_types, 'blue', TRUE));
 
 		foreach($referred_nhpid_types as $possible_referred_type=>$possible_referring_type_name){
     	//if(in_array($possible_referred_type, array_keys($referred_types))) continue;
@@ -942,100 +1057,100 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
 		    '#collapsible' => TRUE,
 		    '#collapsed' => TRUE,
 		  );
-      $possible_referred_fields = $all_possible_referred_fields[$possible_referred_type];
-      //$possible_referred_fields = field_info_instances('node', $possible_referred_type);
-			$form['nhpid_field_reference_referred_fields'][$referring_field]['new_referred_types'][$possible_referred_type]['fields'] = array(
-		    '#type' => 'checkboxes',
-		    '#title' => t("Referred Fields"),
-		    '#options' => $possible_referred_fields,
-		  );
-		}
-	}
-  $nhpid_types = get_all_nhpid_data_node_types();
-  
-	$fc_referring_fields = $all_fc_referring_fields[$referring_type];
-  //drupal_set_message(nhpid_api_dump($fc_referring_fields, 'blue', TRUE));
-	foreach($fc_referring_fields as $fc_referring_field => $fc_referring_field_info){
-		$fc_referring_field_label = $fc_referring_field_info['label'];
-    $fc_referring_field_fields = $fc_referring_field_info['fields'];
-  	$form['nhpid_field_reference_referred_fields'][$fc_referring_field] = array(
-	    '#type' => 'fieldset',
-	    '#title' => t("Referring field: $fc_referring_field_label"),
-	    '#collapsible' => TRUE,
-	    '#collapsed' => false,
-	  );
-		foreach($fc_referring_field_fields as $fc_referring_field_field => $fc_referring_field_field_name){
-			$referring_field_field = field_info_field($fc_referring_field_field);
-		
-			//drupal_set_message(nhpid_api_dump($referring_field_field['settings']['fields']['node'], 'blue', TRUE));
-			$referred_types = isset($referring_field_field['settings']['fields']['node'])? $referring_field_field['settings']['fields']['node'] : array();
-      $form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field] = array(
-		    '#type' => 'fieldset',
-		    '#title' => t("Referring field: $fc_referring_field_field_name"),
-		    '#collapsible' => TRUE,
-		    '#collapsed' => false,
-		  );
-			$form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field]['old_referred_types'] = array(
-		    '#type' => 'fieldset',
-		    '#title' => t("Existing referring fields"),
-		    '#collapsible' => TRUE,
-		    '#collapsed' => false,
-				'#access'=>!empty($referring_field_field['settings']['fields']['node']),
-		  );
-      $referred_nhpid_types = array_diff_key($all_nhpid_types,$referred_types);
-	  	foreach($referred_types as $referred_type=>$referred_fields){
-
-	      $form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field]['old_referred_types'][$referred_type] = array(
-			    '#type' => 'fieldset',
-			    '#title' => t("Referring fields: $referred_type"),
-			    '#collapsible' => TRUE,
-			    '#collapsed' => false,
-			  );
-				$form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field]['old_referred_types'][$referred_type]['fields'] = array(
-			    '#type' => 'checkboxes',
-			    //'#title' => t("Referred field: $referred_type"),
-			    '#options' => $all_possible_referred_fields[$referred_type],
-			    '#default_value' => $referred_fields,
-			  );
-	      unset($nhpid_types[$referred_type]);
-			}
-
-	    $form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field]['new_referred_types'] = array(
-		    '#type' => 'fieldset',
-		    '#title' => t("New referring fields"),
-		    '#collapsible' => TRUE,
-		    '#collapsed' => TRUE,
-		  );
-	    //drupal_set_message(nhpid_api_dump($nhpid_types, 'blue', TRUE));
-      
-			foreach($referred_nhpid_types as $possible_referred_type=>$possible_referring_type_name){
-	    	//if(in_array($possible_referred_type, array_keys($referred_types))) continue;
-				$form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field]['new_referred_types'][$possible_referred_type] = array(
-			    '#type' => 'fieldset',
-			    '#title' => t($possible_referring_type_name),
-			    '#collapsible' => TRUE,
-			    '#collapsed' => TRUE,
-			  );
-	      $possible_referred_fields = $all_possible_referred_fields[$possible_referred_type];
-	      //$possible_referred_fields = field_info_instances('node', $possible_referred_type);
-				$form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field]['new_referred_types'][$possible_referred_type]['fields'] = array(
-			    '#type' => 'checkboxes',
-			    '#title' => t("Referred field"),
-			    '#options' => $possible_referred_fields,
+			 if (isset($all_possible_referred_fields[$possible_referred_type])){
+				$possible_referred_fields = $all_possible_referred_fields[$possible_referred_type];
+				$form['nhpid_field_reference_referred_fields'][$referring_field]['new_referred_types'][$possible_referred_type]['fields'] = array(
+				'#type' => 'radios',
+				'#title' => t("Referred Fields"),
+				'#options' => $possible_referred_fields,
 			  );
 			}
 		}
 	}
-  //drupal_set_message(nhpid_api_dump($form_state['clicked_button']['#id'], 'blue', TRUE));
-  $form['nhpid_field_reference_referred_fields']['save']=array(
-  '#type' => 'submit',
-    '#value' => t('Save'),
-		'#access' => $form_state['clicked_button']['#id'] == 'edit-nhpid-field-reference-referred-fields-update-referring-type',
-    '#name' => "nhpid_field_reference_referred_fields_" . $refering_type . "_save",
-    '#limit_validation_errors' => array(array('nhpid_field_reference_referred_fields')),
+	$nhpid_types = get_all_nhpid_data_node_types();
+	if (isset($all_fc_referring_fields[$referring_type])){
+		$fc_referring_fields = $all_fc_referring_fields[$referring_type];
+		foreach($fc_referring_fields as $fc_referring_field => $fc_referring_field_info){
+			$fc_referring_field_label = $fc_referring_field_info['label'];
+			$fc_referring_field_fields = $fc_referring_field_info['fields'];
+			$form['nhpid_field_reference_referred_fields'][$fc_referring_field] = array(
+				'#type' => 'fieldset',
+				'#title' => t("Referring field: $fc_referring_field_label"),
+				'#collapsible' => TRUE,
+				'#collapsed' => false,
+			  );
+			foreach($fc_referring_field_fields as $fc_referring_field_field => $fc_referring_field_field_name){
+				$referring_field_field = field_info_field($fc_referring_field_field);
+			
+				//drupal_set_message(nhpid_api_dump($referring_field_field['settings']['fields']['node'], 'blue', TRUE));
+				$referred_types = isset($referring_field_field['settings']['fields']['node'])? $referring_field_field['settings']['fields']['node'] : array();
+		  $form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field] = array(
+				'#type' => 'fieldset',
+				'#title' => t("Referring field: $fc_referring_field_field_name"),
+				'#collapsible' => TRUE,
+				'#collapsed' => false,
+			  );
+				$form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field]['old_referred_types'] = array(
+				'#type' => 'fieldset',
+				'#title' => t("Existing referring fields"),
+				'#collapsible' => TRUE,
+				'#collapsed' => false,
+					'#access'=>!empty($referring_field_field['settings']['fields']['node']),
+			  );
+		  $referred_nhpid_types = array_diff_key($all_nhpid_types,$referred_types);
+			foreach($referred_types as $referred_type=>$referred_fields){
+
+			  $form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field]['old_referred_types'][$referred_type] = array(
+					'#type' => 'fieldset',
+					'#title' => t("Referring fields: $referred_type"),
+					'#collapsible' => TRUE,
+					'#collapsed' => false,
+				  );
+					$form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field]['old_referred_types'][$referred_type]['fields'] = array(
+					'#type' => 'checkboxes',
+					//'#title' => t("Referred field: $referred_type"),
+					'#options' => $all_possible_referred_fields[$referred_type],
+					'#default_value' => $referred_fields,
+				  );
+			  unset($nhpid_types[$referred_type]);
+				}
+
+			$form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field]['new_referred_types'] = array(
+				'#type' => 'fieldset',
+				'#title' => t("New referring fields"),
+				'#collapsible' => TRUE,
+				'#collapsed' => TRUE,
+			  );
+		  
+				foreach($referred_nhpid_types as $possible_referred_type=>$possible_referring_type_name){
+				//if(in_array($possible_referred_type, array_keys($referred_types))) continue;
+					$form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field]['new_referred_types'][$possible_referred_type] = array(
+					'#type' => 'fieldset',
+					'#title' => t($possible_referring_type_name),
+					'#collapsible' => TRUE,
+					'#collapsed' => TRUE,
+				  );
+			  $possible_referred_fields = $all_possible_referred_fields[$possible_referred_type];
+			  //$possible_referred_fields = field_info_instances('node', $possible_referred_type);
+					$form['nhpid_field_reference_referred_fields'][$fc_referring_field][$fc_referring_field_field]['new_referred_types'][$possible_referred_type]['fields'] = array(
+					'#type' => 'checkboxes',
+					'#title' => t("Referred field"),
+					'#options' => $possible_referred_fields,
+				  );
+				}
+			}
+		}
+	
+
+	  $form['nhpid_field_reference_referred_fields']['save']=array(
+		'#type' => 'submit',
+		'#value' => t('Save'),
+		'#access' => isset($form_state['clicked_button']) and $form_state['clicked_button']['#id'] == 'edit-nhpid-field-reference-referred-fields-update-referring-type',
+		'#name' => "nhpid_field_reference_referred_fields_" . $refering_type . "_save",
+		'#limit_validation_errors' => array(array('nhpid_field_reference_referred_fields')),
 		'#submit' => array('nhpid_field_dependency_form_submit'),
-  );
-
+	  );
+	}
 
 	// Workflow states
   $form['nhpid_field_reference_visible_wkf_states'] = array(
@@ -1075,7 +1190,7 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
 																				array('mapped_fields'),),
 		'#submit' => array('nhpid_field_dependency_form_submit'),
   );
-
+return $form;
 	//unit type mapping
 	$mapped_fields = array();
   $form['nhpid_field_reference_unit_unit_type_mapping'] = array(
@@ -1094,18 +1209,14 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
 	}
 	$mapped_fields = array_merge($mapped_fields, $unit_fields);
   $content_types = array();
-  //drupal_set_message(nhpid_api_dump($unit_fields, 'red', TRUE));
-  
 	foreach($unit_fields as $unit_field){
     $content_types = array_merge($content_types, nhpid_api_get_content_types_by_field_name($unit_field));
 	}
-  //drupal_set_message(nhpid_api_dump($content_types, 'red', TRUE));
   $unit_type_nodes = node_load_multiple(get_all_nids_by_type('code_unit_type'));
   $nhpid_field_unit_type_mapping = variable_get('nhpid_field_unit_type_mapping', array());
-  //drupal_set_message(nhpid_api_dump($nhpid_field_unit_type_mapping, 'red', TRUE));
+
   $unit_types = array();
   foreach ($unit_type_nodes as $unit_type_node) {
-    //drupal_set_message(nhpid_api_dump($unit_type_node, 'red', TRUE));
 		//$unit_types[$unit_type_node->field_code[$unit_type_node->language][0]['value']] = $unit_type_node->field_code[$unit_type_node->language][0]['value'] . ' (' . $unit_type_node->field_description_e[$unit_type_node->language][0]['value'] .')';
     $unit_types[$unit_type_node->nid] = $unit_type_node->field_code[$unit_type_node->language][0]['value'] . ' (' . $unit_type_node->field_description_e[$unit_type_node->language][0]['value'] .')';
 
@@ -1251,14 +1362,28 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
   );
 	$mapped_field = 'field_approved_ingredient_name';
 	$mapped_fields[] = $mapped_field;
-  $content_types = array();
-  $content_types = array_merge($content_types, nhpid_api_get_content_types_by_field_name($mapped_field));
+	$content_types = array();
+	$content_types = array_merge($content_types, nhpid_api_get_content_types_by_field_name($mapped_field));
 	$field_info = field_info_field($mapped_field);
 	$referred_types = array();
-	foreach($field_info['settings']['fields']['node'] as $type => $val){
-		$node_type_names = node_type_get_names();
-    $referred_types[$type] = $node_type_names[$type] . ' (' . $type . ')';
+	if ($field_info['settings']['handler'] == 'base'){
+		foreach($field_info['settings']['handler_settings']['target_bundles'] as $type => $val){
+			$node_type_names = node_type_get_names();
+			$referred_types[$type] = $node_type_names[$type] . ' (' . $type . ')';
+		}
 	}
+	if ($field_info['settings']['handler'] == 'views'){
+		$view_name=$field_info['settings']['handler_settings']['view']['view_name'];
+		$display_name=$field_info['settings']['handler_settings']['view']['display_name'];
+		$view = views_get_view($view_name);
+		$filter_name= 'type';
+		$display = $view->display[$display_name];
+		foreach($display->display_options['filters'][$filter_name]['value'] as $type => $val){
+			$node_type_names = node_type_get_names();
+			$referred_types[$type] = $node_type_names[$type] . ' (' . $type . ')';
+		}
+	}
+
   //drupal_set_message(nhpid_api_dump($content_types, 'red', TRUE));
   $nhpid_field_approved_ingredient_name_mapping = variable_get('nhpid_field_approved_ingredient_name_mapping', array());
 
@@ -1318,9 +1443,22 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
   $content_types = array_merge($content_types, nhpid_api_get_content_types_by_field_name($mapped_field));
 	$field_info = field_info_field($mapped_field);
 	$referred_types = array();
-	foreach($field_info['settings']['fields']['node'] as $type => $val){
-		$node_type_names = node_type_get_names();
-    $referred_types[$type] = $node_type_names[$type] . ' (' . $type . ')';
+	if ($field_info['settings']['handler'] == 'base'){
+		foreach($field_info['settings']['handler_settings']['target_bundles'] as $type => $val){
+			$node_type_names = node_type_get_names();
+			$referred_types[$type] = $node_type_names[$type] . ' (' . $type . ')';
+		}
+	}
+	if ($field_info['settings']['handler'] == 'views'){
+		$view_name=$field_info['settings']['handler_settings']['view']['view_name'];
+		$display_name=$field_info['settings']['handler_settings']['view']['display_name'];
+		$view = views_get_view($view_name);
+		$filter_name= 'type';
+		$display = $view->display[$display_name];
+		foreach($display->display_options['filters'][$filter_name]['value'] as $type => $val){
+			$node_type_names = node_type_get_names();
+			$referred_types[$type] = $node_type_names[$type] . ' (' . $type . ')';
+		}
 	}
   //drupal_set_message(nhpid_api_dump($content_types, 'red', TRUE));
   $nhpid_field_constituent_mapping = variable_get('nhpid_field_constituent_mapping', array());
@@ -1383,9 +1521,22 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
   $content_types = array_merge($content_types, nhpid_api_get_content_types_by_field_name($mapped_field));
 	$field_info = field_info_field($mapped_field);
 	$referred_types = array();
-	foreach($field_info['settings']['fields']['node'] as $type => $val){
-		$node_type_names = node_type_get_names();
-    $referred_types[$type] = $node_type_names[$type] . ' (' . $type . ')';
+	if ($field_info['settings']['handler'] == 'base'){
+		foreach($field_info['settings']['handler_settings']['target_bundles'] as $type => $val){
+			$node_type_names = node_type_get_names();
+			$referred_types[$type] = $node_type_names[$type] . ' (' . $type . ')';
+		}
+	}
+	if ($field_info['settings']['handler'] == 'views'){
+		$view_name=$field_info['settings']['handler_settings']['view']['view_name'];
+		$display_name=$field_info['settings']['handler_settings']['view']['display_name'];
+		$view = views_get_view($view_name);
+		$filter_name= 'type';
+		$display = $view->display[$display_name];
+		foreach($display->display_options['filters'][$filter_name]['value'] as $type => $val){
+			$node_type_names = node_type_get_names();
+			$referred_types[$type] = $node_type_names[$type] . ' (' . $type . ')';
+		}
 	}
   //drupal_set_message(nhpid_api_dump($content_types, 'red', TRUE));
   $nhpid_field_subingredient_mapping = variable_get('nhpid_field_subingredient_mapping', array());
@@ -1451,6 +1602,7 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
 		'#submit' => array('nhpid_field_dependency_form_submit'),
 	);
   // dropdown list labels
+  /*
 	$all_referred_fields = field_reference_get_all_referred_fields();
 	$labels = variable_get('nhpid_field_reference_list_labels', array());
   $form['nhpid_field_reference_referred_field_label'] = array(
@@ -1509,6 +1661,7 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
     '#limit_validation_errors' => array(array('nhpid_field_reference_referred_field_label')),
 		'#submit' => array('nhpid_field_dependency_form_submit'),
   );
+  
 	//reset field reference option lists
 	$referring_fields = field_reference_get_all_referring_fields();
   $form['reset_field_reference_option_lists'] = array(
@@ -1543,7 +1696,7 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
     '#limit_validation_errors' => array(array('reset_field_reference_option_lists'),),
 		'#submit' => array('nhpid_field_dependency_form_submit'),
 	);
-	
+*/	
   return $form;
 }
 
@@ -1564,17 +1717,30 @@ function nhpid_field_dependency_form_validate($form, &$form_state) {
     }
 		*/
     break;
-    
-  }
+	case "edit-nhpid-entityreference-referred-fields-save":
+		//dpm($form_state['values']['nhpid_entityreference_referred_fields']['all_referring_fields']);
+		$referring_fields = $form_state['values']['nhpid_entityreference_referred_fields'];
+		$all_referring_fields = $form_state['values']['nhpid_entityreference_referred_fields']['all_referring_fields'];
+		//dpm($all_referring_fields);
+		//dpm($referring_fields);
+		foreach($all_referring_fields as $referring_field_name){
+			$referring_field=$referring_fields[$referring_field_name];
+			foreach($referring_field as $referred_type => $referred_field){
+				if (!$referred_field){
+					form_set_error(t('nhpid_entityreference_referred_fields][@referring_field][@referred_type', array('@referring_field'=>$referring_field_name, '@referred_type'=> $referred_type)), t('@referring_field: @referred_type has not been set.',  array('@referring_field'=>$referring_field_name, '@referred_type'=> $referred_type)));
+					//dpm(t('@referring_field: @referred_type has not been set.',  array('@referring_field'=>$referring_field_name, '@referred_type'=> $referred_type)));
+				}
+			}
+
+		}	
+		break;
+	}
+	
 
 }
 
 function nhpid_field_dependency_form_submit($form, &$form_state) {
  
-  //drupal_set_message(nhpid_api_dump($form_state['clicked_button']['#id'], 'purple', TRUE));
-  //drupal_set_message(nhpid_api_dump($form_state['values'], 'purple', TRUE));
-  //drupal_set_message(nhpid_api_dump($form['summary'], 'green', TRUE));
-  
   switch ($form_state['clicked_button']['#id']) {
     
     case "edit-nhpid-field-reference-visible-wkf-states-save":
@@ -1657,70 +1823,26 @@ function nhpid_field_dependency_form_submit($form, &$form_state) {
 			break;
 		case 'edit-nhpid-field-reference-referred-fields-update-referring-type':
 			break;
-    case 'edit-nhpid-field-reference-referred-fields-save':
-      $referring_type = $form_state['values']['nhpid_field_reference_referred_fields']['refering_type'];
-			$referring_fields = $form_state['values']['nhpid_field_reference_referred_fields']['fields'];
-      //drupal_set_message(nhpid_api_dump($form_state['values']['nhpid_field_reference_referred_fields'], 'blue', TRUE));
-			foreach ($referring_fields as $referring_field => $referring_field_name){
-				$referred_fields_settings = array();
-				$old_referred_types = $form_state['values']['nhpid_field_reference_referred_fields'][$referring_field]['old_referred_types'];
-        //drupal_set_message(nhpid_api_dump($old_referred_types, 'blue', TRUE));
-				foreach ($old_referred_types as $old_referred_type=>$fields){
-        //drupal_set_message(nhpid_api_dump($fields, 'blue', TRUE));
-					foreach ($fields['fields'] as $field){
-           if($field) $referred_fields_settings[$old_referred_type][$field]=$field;
-           //drupal_set_message(nhpid_api_dump($referred_fields_settings, 'blue', TRUE));
-					}
-				}
-        $new_referred_types = $form_state['values']['nhpid_field_reference_referred_fields'][$referring_field]['new_referred_types'];
-        //drupal_set_message(nhpid_api_dump($new_referred_types, 'blue', TRUE));
-				foreach ($new_referred_types as $new_referred_type=>$fields){
-        //drupal_set_message(nhpid_api_dump($fields, 'blue', TRUE));
-					foreach ($fields['fields'] as $field){
-           if($field) $referred_fields_settings[$new_referred_type][$field]=$field;
-           //drupal_set_message(nhpid_api_dump($referred_fields_settings, 'blue', TRUE));
-					}
-				}
-				$field_settings = field_read_field($referring_field);
-        $field_settings['settings']['fields']['node']=$referred_fields_settings;
-        //drupal_set_message(nhpid_api_dump($field_settings, 'blue', TRUE));
-        field_update_field($field_settings);
-        field_reference_update_all_cached_option_lists('node', $referring_type, array_keys($referring_fields));
+    case 'edit-nhpid-entityreference-referred-fields-save':
+
+		$referring_fields = $form_state['values']['nhpid_entityreference_referred_fields'];
+		$referred_fields_settings = array();
+		$all_referring_fields = $form_state['values']['nhpid_entityreference_referred_fields']['all_referring_fields'];
+		foreach($all_referring_fields as $referring_field_name){
+			$referring_field=$referring_fields[$referring_field_name];
+			if ($referring_field =='Save'){
+				continue;
 			}
-      $fc_referring_fields = $form_state['values']['nhpid_field_reference_referred_fields']['fc_fields'];
-      //drupal_set_message(nhpid_api_dump($form_state['values']['nhpid_field_reference_referred_fields'], 'blue', TRUE));
-			foreach ($fc_referring_fields as $fc_referring_field => $referring_field_info){
-        foreach ($referring_field_info['fields'] as $referring_field => $referring_field_info){
-					$referred_fields_settings = array();
-					$old_referred_types = $form_state['values']['nhpid_field_reference_referred_fields'][$fc_referring_field][$referring_field]['old_referred_types'];
-	        //drupal_set_message(nhpid_api_dump($old_referred_types, 'blue', TRUE));
-					foreach ($old_referred_types as $old_referred_type=>$fields){
-	        //drupal_set_message(nhpid_api_dump($fields, 'blue', TRUE));
-						foreach ($fields['fields'] as $field){
-	           if($field) $referred_fields_settings[$old_referred_type][$field]=$field;
-	           //drupal_set_message(nhpid_api_dump($referred_fields_settings, 'blue', TRUE));
-						}
-					}
-	        $new_referred_types = $form_state['values']['nhpid_field_reference_referred_fields'][$fc_referring_field][$referring_field]['new_referred_types'];
-	        //drupal_set_message(nhpid_api_dump($new_referred_types, 'blue', TRUE));
-					foreach ($new_referred_types as $new_referred_type=>$fields){
-	        //drupal_set_message(nhpid_api_dump($fields, 'blue', TRUE));
-						foreach ($fields['fields'] as $field){
-	           if($field) $referred_fields_settings[$new_referred_type][$field]=$field;
-	           //drupal_set_message(nhpid_api_dump($referred_fields_settings, 'blue', TRUE));
-						}
-					}
-					$field_settings = field_read_field($referring_field);
-	        $field_settings['settings']['fields']['node']=$referred_fields_settings;
-	        //drupal_set_message(nhpid_api_dump($field_settings, 'blue', TRUE));
-	        field_update_field($field_settings);
-	        field_reference_update_all_cached_option_lists('field_collection_item', $fc_referring_field, array_keys($referring_field_info['fields']));
-          
-				}
+			foreach ($referring_field as $referred_type => $referred_field){
+				$referred_fields_settings[$referring_field_name][$referred_type]=$referred_field;
 			}
-			
-			break;
-		case 'edit-nhpid-field-reference-referred-field-label-save':
+		}	
+		//dpm($referred_fields_settings);
+		$variable_name='nhpid_entityreference_fields_settings';
+		variable_set($variable_name, $referred_fields_settings);	
+		break;
+		
+	case 'edit-nhpid-field-reference-referred-field-label-save':
     //case "edit-save-all":
 			$old_list_labels = variable_get('nhpid_field_reference_list_labels', array());
 			$new_list_labels = $form_state['values']['nhpid_field_reference_referred_field_label']['nhpid_field_reference_referred_field_label_data'];
@@ -1836,101 +1958,138 @@ function nhpid_rule_archive_form_submit($form, &$form_state) {
 }
 
 function nhpid_excel_column_title_mapping_form($form, &$form_state=NULL) {
-  $node_type = $_GET['node_type'];
-  $drupal_field_name = $_GET['drupal_field_name'];
-  //drupal_set_message(nhpid_api_dump($node_type, 'purple', TRUE));
-  //drupal_set_message(nhpid_api_dump($drupal_field_name, 'purple', TRUE));
-  $table_name = 'excel_drupal_field_mapping';
-  $table_column_names = nhpid_get_table_field_names($table_name);
   
+  $table_name = NHPID_EXCEL_COLUMN_MAPPING_TABLE;
+  //$table_column_names = nhpid_get_table_field_names($table_name);
+  $types=get_all_nhpid_data_node_types();
+  //$types = array_slice($types, -3, 3);
+  $fields_not_checked=array('field_legacy_nid'=>array(),'field_parent_space'=>array(),'field_workflow'=>array());
+  //$form['#theme'] = 'nhpid_excel_field_mapping_form';
+  $form['#tree']=true;
   $form['help']=array(
     '#type' => 'item',
     '#markup' => "To add new mapping, just filled the form and click on 'Save'. To change an existing mapping, click the 'Edit' in the mapping list and change data and save. node_type and drupal_field_name are combined primary key.",
   );
-  $sql = "select * from $table_name where node_type ='$node_type' and drupal_field_name = '$drupal_field_name'";
-  $rs = db_fetch_object(db_query($sql));
-  foreach ($table_column_names as $column_name) {
-    $default = !empty($form_state['values'][$column_name]) ? $form_state['values'][$column_name] : $rs -> $column_name;
-    $form[$column_name] = array(
-      '#type' => 'textfield',
-      '#default_value' => $default,
-      '#title' => t($column_name),
-    );
-  }
+  $form['node_types']=array(
+		'#type' => 'value',
+		'#value' => $types,
+	);
   $form['table_name']=array(
-    '#type' => 'hidden',
-    '#default_value' => $table_name,
-  );
-  $form['save']=array(
-    '#type' => 'submit',
-    '#value' => t('Save'),
-  );
-  $form['cancel']=array(
-    '#type' => 'submit',
-    '#value' => t('Clear'),
-    '#attributes' => array('onClick' => 'location.replace("'. referer_uri() .'"); return false;'),
-  );
+		'#type' => 'value',
+		'#value' => $table_name,
+	);
 
-  $header = array();
-  foreach ($table_column_names as $column_name) {
-    $header[] = array('data' => $column_name, 'field' => $column_name,);
-  }
-  $lines_per_page = 20;
-  $sql = "select * from $table_name";
-  $sql_count = "select count(1) from $table_name";
-  $sql = $sql . tablesort_sql($header);
-  $rs = pager_query($sql, $lines_per_page, 0, $sql_count);
-
-  $rows = array();
-  while ($record = db_fetch_object($rs)) {
-    $row = array();
-    $path = arg(0) . '/' . arg(1);
-    $query = array();
-    $query['node_type'] = $record -> node_type;
-    $query['drupal_field_name'] = $record -> drupal_field_name;
-    if ($_GET['page']) $query['page'] = $_GET['page'];
-    $row[] = l('Edit', $path, array('query' => $query));
-    foreach ($table_column_names as $column_name) {
-      $row[] = $record -> $column_name;
+  foreach ($types as $node_type => $node_name) {
+      $drupal_fields = get_all_fields_of_node_type($node_type);
+	  $drupal_fields = array_diff_key($drupal_fields,$fields_not_checked);
+	  $form[$node_type] = array(
+        '#title' => $node_name,
+        '#type' => 'fieldset', 
+		//'#value' => $node_type,
+		'#theme' => 'nhpid_excel_field_mapping_form_wrapper',
+        '#collapsible' => TRUE, 
+        '#collapsed' => True,
+      );
+	  
+	  $sql = db_select($table_name, 'x')
+				->fields('x', array('drupal_field_name', 'excel_field_name','node_type','col_order'))
+				->condition('node_type', $node_type)
+				->orderBy('col_order')
+				->execute();
+	  $data = $sql ->fetchAllAssoc('drupal_field_name');
+	  $ordered_fields=array_intersect(array_keys($data),array_keys($drupal_fields)) + array_diff( array_keys($drupal_fields),array_keys($data));
+	  //dpm($ordered_fields);
+	  //dpm(array_keys($drupal_fields));
+      foreach($ordered_fields as $drupal_field_name) {
+		$excel_field_name=null;
+		$excel_field_order=null;
+		$field_label=$drupal_fields[$drupal_field_name];
+		$excel_field_name=!empty($form_state['values'][$node_type][$drupal_field_name]['excel_field_name'] ) ? $form_state['values'][$node_type][$drupal_field_name]['excel_field_name']  : '';
+		$excel_field_order=!empty($form_state['values'][$node_type][$drupal_field_name]['excel_field_order'] ) ? $form_state['values'][$node_type][$drupal_field_name]['excel_field_order']  : count($data) + 1;
+		if (isset($data[$drupal_field_name])){
+			$excel_field_name = $data[$drupal_field_name]->excel_field_name;
+			$excel_field_order=$data[$drupal_field_name]->col_order;
+		}
+		$element="$drupal_field_name";
+		$form[$node_type][$element] = array(
+          '#title' => $drupal_field_name,
+		  '#type' => 'fieldset', 
+          '#collapsible' => TRUE, 
+          '#collapsed' => False,
+        );
+		$form[$node_type][$element]['drupal_field_name'] = array(
+		  '#type' => 'item',
+		  '#markup' => $drupal_field_name,
+        );
+		$form[$node_type][$element]['drupal_field_name'] = array(
+		  '#type' => 'item', 
+          '#markup' => $drupal_field_name,
+        );
+        $form[$node_type][$element]['excel_field_name'] = array(
+		  '#type' => 'textfield', 
+          //'#title' => 'Excel Field Name', 
+          '#default_value' => $excel_field_name,
+		  //'#maxlength' => 60,
+		  '#size' => 20,
+        );
+		
+		$form[$node_type][$element]['weight'] = array(
+		  '#type' => 'weight', 
+          '#title' => 'Weight', 
+          '#default_value' => $excel_field_order,
+		  '#title_display' => 'invisible',
+		  '#delta' => count($ordered_fields) + 1,
+        );
+		
+      }
     }
-    $rows[] = $row;
-  }
-  $output = '';
-  $output = theme('table', $header, $rows);
-  $output = $output . theme('pager');
-  $form['list']=array(
-    '#type' => 'item',
-    '#markup' => $output,
+    
+  $form['submit'] = array(
+  '#type' => 'submit',
+  '#value' => t('Save Required Field Setting')
   );
 
-  return $form;
+  return $form;  
+  
 }
 
 function nhpid_excel_column_title_mapping_form_submit($form, &$form_state) {
-   switch ($form_state['clicked_button']['#id']) {
-    case 'edit-save':
+   
     $table_name = $form_state['values']['table_name'];
-    $table_column_names = nhpid_get_table_field_names($table_name);
-    $fields_clause = array();
-    $values_clause = array();
-    $node_type = $form_state['values']['node_type'];
-    $drupal_field_name = $form_state['values']['drupal_field_name'];
-    foreach ($table_column_names as $column_name) {
-      $fields_clause[] = $column_name;
-      $values_clause[] = "'" . $form_state['values'][$column_name] . "'";
+    $node_types = $form_state['values']['node_types'];
+	$operations = array();
+    foreach ($node_types as $node_type => $node_name) {
+	  $drupal_field_names=$form_state['values'][$node_type];
+	  foreach($drupal_field_names as $drupal_field_name=>$data){
+			$excel_field_name=$data['excel_field_name'];
+			$excel_field_order=$data['weight'];
+			$item=array(
+				  'drupal_field_name' => $drupal_field_name, 
+				  'node_type' => $node_type,
+				  'excel_field_name' => $excel_field_name,
+				  'mapping_field_name' => $drupal_field_name,
+				  'col_order' => $excel_field_order,
+			);
+			$operations[] = array('_nhpid_map_excel_column', array($item, $table_name));
+	  }
       
     } 
-    $sql = "insert into $table_name (" . implode(',', $fields_clause) . ') values(' . implode(',', $values_clause) . ") on duplicate key update node_type = '" . $node_type . "', drupal_field_name= '" . $drupal_field_name . "'";
-    if (db_query($sql)) {
-      drupal_set_message("The mapping ($node_type/$drupal_field_name) has been saved successfully.");
-    }
-    else{
-      drupal_set_message("The mapping ($node_type/$drupal_field_name) has been saved unsuccessfully.", 'error');
-    }
-    
-   } 
-  $form_state['storage']['values'] = $form_state['values'];
+	$batch = array(
+	  'operations' => $operations,
+	  'finished' => 'batch_re_gnerate_title_body_finished',
+	  // We can define custom messages instead of the default ones.
+	  'title' => t('Map excel column with druapl field...'),
+	  'init_message' => t('Starting.'),
+	  'progress_message' => t('Processed @current out of @total items.'),
+	  'error_message' => t('Mapping excel column has encountered an error.'),
+	  'file' => drupal_get_path('module', 'nhpid'). '/nhpid_forms.inc',
+	);
+
+	batch_set($batch);
+	batch_process();
+
 }
+
 function nhpid_lock_system_form($form, &$form_state=NULL) {
 	global $user;
 	$lock_persistent = variable_get(DATA_EXPORTING_LOCK_VARIABLE, 0);
@@ -1947,11 +2106,12 @@ function nhpid_lock_system_form($form, &$form_state=NULL) {
     '#markup' => t('Locking the system persistently will block other users to edit nhpid data. If you would like to lock the system persistently, press "Lock". The lock has to be released manually by clicking "Release". All users except one who locks the system are unable to save data.'),
   );
   $locker_uid = variable_get(SYSTEM_LOCK_VARIABLE, null);
+  //dpm($user);
   $email_link = null;
-  if ($user->uid != $locker_uid){
+  if ($locker_uid and $user->uid != $locker_uid){
 		$locker = user_load($locker_uid);
 		$locker_name = $locker -> name;
-    if (user_access('access nhpid email') and $locker-> uid != $user -> uid) $email_link = l("Ask info", "nhpid_email/$locker_uid", array('attributes' => array('target' => '_blank')));
+		if (user_access('access nhpid email') and $locker-> uid != $user -> uid) $email_link = l("Ask info", "nhpid_email/$locker_uid", array('attributes' => array('target' => '_blank')));
   }
 	else{
     $locker_name = 'you';
@@ -1993,6 +2153,7 @@ function nhpid_lock_system_form($form, &$form_state=NULL) {
   return $form;
 }
 function nhpid_lock_system_form_submit($form, &$form_state) {
+   //dpm($form_state);
    switch ($form_state['clicked_button']['#id']) {
    case 'edit-release-lock':
       # relase lock
@@ -2134,21 +2295,95 @@ function update_calculated_field_values_batch($node_type, $mode, &$context) {
 
 
 }
-function theme_nhpid_auto_title_form($variables) {
+function theme_nhpid_excel_field_mapping_form_wrapper($variables) {
 	//$header = array();
-	$header = array(t('Content Type'), t('Title Field1'), t('Title Field2'), t('Title Field3'), t('Body Field'));
-  $form = $variables['form'];
-  $rows = array();
-  foreach (get_all_nhpid_data_node_types() as $type => $name) {
-    $fields = get_node_type_field_name_title_mapping($type);
-		if (empty($fields)) continue;
-		$name = $form[$type]['node_name']['#title'];
-    unset($form[$type]['node_name']['#title']);
-    
-    $rows[] = array($name, drupal_render($form[$type]['node_title_field1']), drupal_render($form[$type]['node_title_field2']), drupal_render($form[$type]['node_title_field3']), drupal_render($form[$type]['node_body_field']));
-  }
-  $output = drupal_render($form['help']);
-  $output .= theme_table(array('header' => $header, 'rows' => $rows, 'attributes' => Null, 'caption' => Null,'colgroups' => Null,'sticky' => True,'empty' => '',));
-  return $output . drupal_render_children($form);
+	$header = array('', 'Drupal Field Name', 'Excel Column Name', 'Excel Column Order', );
+	$element = $variables['element'];
+
+	//drupal_debug($element);
+	$rows=array();
+	foreach(element_children($element) as $field_name){
+		$node_type = $element[$field_name]['#parents'][0];
+		$element[$field_name]['weight']['#attributes']['class'] = array($node_type . '-excel-column-order-weight');
+		if (strstr($field_name, 'field_')){
+			//drupal_debug($key);
+			//drupal_debug($val);
+			$excel_field_name=drupal_render($element[$field_name]['excel_field_name']);
+			//$excel_field_order=drupal_render($element[$field_name]['excel_field_order']);
+			$drupal_field_name=drupal_render($element[$field_name]['drupal_field_name']);
+			$weight=drupal_render($element[$field_name]['weight']);				
+			$rows[] = array(
+				'data'=>array(
+					array('class' => array('excel-column-cross')),
+					$drupal_field_name, $excel_field_name,$weight,
+				),
+				'class' => array('draggable'),
+			);
+		}
+	
+	}
+
+	//drupal_debug($rows);
+	
+  $output = theme('table', array('header' => $header, 'rows' => $rows,  'caption' => Null,'colgroups' => Null,'sticky' => True,'empty' => '','attributes' => array('id' => $node_type .'-excel-column-order')));
+  //$output .= drupal_render_children($element);
+  //drupal_debug($output);
+  drupal_add_tabledrag($node_type .'-excel-column-order', 'order', 'sibling', $node_type .'-excel-column-order-weight');
+  return $output;
+}
+
+function theme_nhpid_field_length_limit_form_wrapper($variables) {
+	$header = array('Drupal Field Name', 'Length Limit', );
+	$element = $variables['element'];
+	//drupal_debug($element);
+	$rows=array();
+	$output = '';
+	
+	foreach(element_children($element) as $field_name){
+		//drupal_debug($field_name);
+		if (strstr($field_name, 'field_')){
+			$length_limit=render($element[$field_name]);	
+			//drupal_debug($length_limit);
+			//drupal_debug($element[$field_name]);
+			$rows[] = array(
+				'data'=>array(
+					$field_name, $length_limit,
+				),
+			);
+		}
+	
+		
+	}
+	$output = theme('table', array('header' => $header, 'rows' => $rows,  'caption' => Null,'colgroups' => Null,'sticky' => True,'empty' => '','attributes' => array()));
+
+	return $output;
+}
+
+function theme_nhpid_referred_field_form_wrapper($variables) {
+	$types = get_all_nhpid_data_node_types();
+	$header = array('Referred Type', 'Referred Field', );
+	$element = $variables['element'];
+	//drupal_debug($element);
+	$rows=array();
+	foreach(element_children($element) as $node_type){
+		//drupal_debug($node_type);
+		if (isset($types[$node_type])){
+			$node_type_title=$element[$node_type]['#title'];
+			unset($element[$node_type]['#title']);
+			$referred_field=drupal_render($element[$node_type]);				
+			$rows[] = array(
+				'data'=>array(
+					$node_type_title, $referred_field,
+				),
+			);
+		}
+	
+	}
+
+	//drupal_debug($rows);
+	
+  $output = theme('table', array('header' => $header, 'rows' => $rows,  'caption' => Null,'colgroups' => Null,'sticky' => True,'empty' => '','attributes' => array()));
+  //$output .= drupal_render_children($element);
+  return $output;
 }
 

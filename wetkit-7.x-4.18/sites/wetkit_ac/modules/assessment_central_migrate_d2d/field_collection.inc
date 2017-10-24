@@ -74,8 +74,9 @@ class ACNotesMigration extends ACFCMigration {
     */
 	$this->source = new MigrateSourceSQL($this->query(), $this->sourceFields, NULL,
       $this->sourceOptions);
+	$this->destination_type='field_notes';
     $this->destination = new MigrateDestinationFieldCollection(
-      'field_notes',
+      $this->destination_type,
       array('host_entity_type' => 'node')
     );
 
@@ -104,21 +105,11 @@ class ACNotesMigration extends ACFCMigration {
    * @return QueryConditionInterface
    */
   protected function query() {
-    $query = Database::getConnection('legancy', $this->sourceConnection)
+    $query = Database::getConnection('default', $this->sourceConnection)
 		->select('field_collection_item', 'c')
 		->condition('field_name', 'field_notes');
 	
-	$query->leftJoin('field_data_field_note_type', 'fnt', 'fnt.entity_id = c.item_id');
-	$query->leftJoin('field_data_field_link_type', 'fln', 'fln.entity_id = c.item_id');
-	$query->leftJoin('field_data_field_address', 'fa', 'fa.entity_id = c.item_id');
-	$query->leftJoin('field_data_field_note', 'fn', 'fn.entity_id = c.item_id');
-	$query->leftJoin('field_data_field_warning', 'fw', 'fw.entity_id = c.item_id');
 	$query->fields('c', array('item_id', 'revision_id', 'field_name', 'archived'));
-	$query->addField('fnt', 'field_note_type_value', 'field_note_type');
-	$query->addField('fln', 'field_link_type_value', 'field_link_type');
-	$query->addField('fa', 'field_address_value', 'field_address');
-	$query->addField('fn', 'field_note_value', 'field_note');
-	$query->addField('fw', 'field_warning_value', 'field_warning');
 		
     return $query;
   }
@@ -129,6 +120,35 @@ class ACNotesMigration extends ACFCMigration {
       return FALSE;
     }
 	//print_r($row);
+	// field values
+	$fields = array('field_note_type', 'field_link_type','field_address','field_note', 'field_warning' );
+	foreach($fields as $field_name){
+		$legacy_field_config = Database::getConnection('legacy', $this->sourceConnection)
+                 ->select('field_config', 'c')
+                 ->fields('c', array('field_name', 'data', 'module'))
+				 ->condition('field_name', $field_name)
+                 ->execute()
+                 ->fetchObject();
+		$module = $legacy_field_config->module;
+		$data = unserialize($legacy_field_config->data);
+		if($module == 'entityreference') {
+			$storage_field=$field_name . '_entity_id';
+		}
+		elseif($module == 'field_reference') {
+			$storage_field=$data['storage']['details']['sql']['FIELD_LOAD_CURRENT']['field_data_' . $field_name]['entity_id'];
+		}
+		else{
+			$storage_field=$data['storage']['details']['sql']['FIELD_LOAD_CURRENT']['field_data_' . $field_name]['value'];
+		}
+		$result=Database::getConnection('default', $this->sourceConnection)
+		->select('field_data_' . $field_name, $field_name)
+		->fields($field_name, array($storage_field, 'entity_id'))
+		->condition('entity_id', $row->item_id)
+		->execute();
+		while($record = $result->fetchObject()) {
+       		$row->$field_name[]=$record->$storage_field;
+		}
+	}
 	// Mapping field collection item id
 	$legacy_host_entity_row = Database::getConnection('legancy', $this->sourceConnection)
                  ->select('field_data_field_notes', 'c')
@@ -154,13 +174,13 @@ class ACNotesMigration extends ACFCMigration {
 	//mapping entity reference field_note_type target id
 	// entity reference target_ids. In legacy setting, this field values are the english authorized names. We should map it to entity id of type NHPID Ingredient
 	// field_note_type
-	$code = $row -> field_note_type;
+	$codes = $row -> field_note_type ? $row -> field_note_type:array();
 	$code_type = 'note_type';
 	//print_r($codes);
-	if ($code){
+	foreach ($codes as $index =>$code){
 		$target_id = $this->get_new_code_entity_id($code, $code_type);
 		if ($target_id ){
-			$row->field_note_type = $target_id;
+			$row->field_note_type[$index] = $target_id;
 		}
 		else{
 			$this->saveMessage(t('No target id found for code !name', array('!name' => $code)));
@@ -168,12 +188,12 @@ class ACNotesMigration extends ACFCMigration {
 	}
 	
 	// field_link_type
-	$code = $row -> field_link_type;
+	$codea = $row -> field_link_type ? $row -> field_link_type:array();
 	$code_type = 'link_type';
-	if ($code){
+	foreach ($codes as $index =>$code){
 		$target_id = $this->get_new_code_entity_id($code, $code_type);
 		if ($target_id ){
-			$row->field_link_type = $target_id;
+			$row->field_link_type[$index] = $target_id;
 		}
 		else{
 			$this->saveMessage(t('No target id found for code !name', array('!name' => $code)));
@@ -184,6 +204,15 @@ class ACNotesMigration extends ACFCMigration {
 	//print_r($row);
 	print_r($row->item_id . " is migrated \n");
 	return True;
+  }
+  public function completeRollback($entity_ids) {
+    //parent::completeRollback();
+    // Code to execute after an entity has been rolled back.
+	//print_r($entity_ids);
+	$table = 'field_data_' . $this->destination_type;
+	db_delete($table)
+	->condition($this->destination_type . '_value', $entity_ids, '=')
+	->execute();
   }
 }
 class ACPCIMigration extends ACFCMigration {
@@ -205,18 +234,12 @@ class ACPCIMigration extends ACFCMigration {
 	  'field_note' => 'Note',
 	    
     );
-	//$this->sourceFields += parent::getSourceFields('field_collection_item', 'field_primary_user');
-	/*				 
-	$query = Database::getConnection('legacy', $this->sourceConnection)
-		->select('field_collection_item', 'c')
-		->fields('c', array('item_id', 'revision_id', 'field_name', 'archived'))
-		->condition('field_name', 'field_primary_user');
-    $this->source = new  MigrateSourceSQL($query, $columns);
-    */
+	
 	$this->source = new MigrateSourceSQL($this->query(), $this->sourceFields, NULL,
       $this->sourceOptions);
+	$this->destination_type='field_pci';
     $this->destination = new MigrateDestinationFieldCollection(
-      'field_pci',
+      $this->destination_type,
       array('host_entity_type' => 'node')
     );
 
@@ -247,20 +270,9 @@ class ACPCIMigration extends ACFCMigration {
     $query = Database::getConnection('legancy', $this->sourceConnection)
 		->select('field_collection_item', 'c')
 		->condition('field_name', 'field_pci');
-	
-	$query->leftJoin('field_data_field_pci_type', 'fpt', 'fpt.entity_id = c.item_id');
-	$query->leftJoin('field_data_field_link_type', 'fln', 'fln.entity_id = c.item_id');
-	$query->leftJoin('field_data_field_address', 'fa', 'fa.entity_id = c.item_id');
-	$query->leftJoin('field_data_field_note', 'fn', 'fn.entity_id = c.item_id');
-	
-	$query->fields('c', array('item_id', 'revision_id', 'field_name', 'archived'));
-	
-	$query->addField('fpt', 'field_pci_type_value', 'field_pci_type');
-	$query->addField('fln', 'field_link_type_value', 'field_link_type');
-	$query->addField('fa', 'field_address_value', 'field_address');
-	$query->addField('fn', 'field_note_value', 'field_note');
 		
-    return $query;
+	$query->fields('c', array('item_id', 'revision_id', 'field_name', 'archived'));
+	return $query;
   }
   
   public function prepareRow($row) {
@@ -269,6 +281,36 @@ class ACPCIMigration extends ACFCMigration {
       return FALSE;
     }
 	//print_r($row);
+	// field values
+	$fields = array('field_pci_type', 'field_link_type','field_address','field_note');
+	foreach($fields as $field_name){
+		$legacy_field_config = Database::getConnection('legacy', $this->sourceConnection)
+                 ->select('field_config', 'c')
+                 ->fields('c', array('field_name', 'data', 'module'))
+				 ->condition('field_name', $field_name)
+                 ->execute()
+                 ->fetchObject();
+		$module = $legacy_field_config->module;
+		$data = unserialize($legacy_field_config->data);
+		if($module == 'entityreference') {
+			$storage_field=$field_name . '_entity_id';
+		}
+		elseif($module == 'field_reference') {
+			$storage_field=$data['storage']['details']['sql']['FIELD_LOAD_CURRENT']['field_data_' . $field_name]['entity_id'];
+		}
+		else{
+			$storage_field=$data['storage']['details']['sql']['FIELD_LOAD_CURRENT']['field_data_' . $field_name]['value'];
+		}
+		
+		$result=Database::getConnection('default', $this->sourceConnection)
+		->select('field_data_' . $field_name, $field_name)
+		->fields($field_name, array($storage_field, 'entity_id'))
+		->condition('entity_id', $row->item_id)
+		->execute();
+		while($record = $result->fetchObject()) {
+       		$row->$field_name[]=$record->$storage_field;
+		}
+	}
 	// Mapping field collection item id
 	$legacy_host_entity_row = Database::getConnection('legacy', $this->sourceConnection)
                  ->select('field_data_field_pci', 'c')
@@ -294,13 +336,13 @@ class ACPCIMigration extends ACFCMigration {
 	//mapping entity reference field_note_type target id
 	// entity reference target_ids. In legacy setting, this field values are the english authorized names. We should map it to entity id of type NHPID Ingredient
 	// field_pci_type
-	$code = $row -> field_pci_type;
+	$codes = $row -> field_pci_type ? $row -> field_pci_type:array();
 	//print_r($code);
 	$code_type = 'pci_type';
-	if ($code){
+	foreach ($codes as $index =>$code){
 		$target_id = $this->get_new_code_entity_id($code, $code_type);
 		if ($target_id ){
-			$row->field_pci_type = $target_id;
+			$row->field_pci_type[$index] = $target_id;
 			//print_r($target_id);
 		}
 		else{
@@ -309,13 +351,13 @@ class ACPCIMigration extends ACFCMigration {
 	}
 	
 	// field_link_type
-	$code = $row -> field_link_type;
-	//print_r($code);
+	$codes = $row -> field_link_type ? $row -> field_link_type:array();
+	//print_r($codes);
 	$code_type = 'link_type';
-	if ($code){
+	foreach ($codes as $index =>$code){
 		$target_id = $this->get_new_code_entity_id($code, $code_type);
 		if ($target_id ){
-			$row->field_link_type = $target_id;
+			$row->field_link_type[$index] = $target_id;
 			//print_r($target_id);
 		}
 		else{
@@ -323,155 +365,18 @@ class ACPCIMigration extends ACFCMigration {
 		}
 	}
 	
-	print_r($row);
+	//print_r($row);
 	print_r($row->item_id . " is migrated \n");
 	return True;
   }
-}
-class ACPCIMigration_ extends ACFCMigration {
-  public function __construct($arguments) {
-    parent::__construct($arguments);
-	$this->source = new MigrateSourceSQL($this->query(), $this->sourceFields, NULL,
-      $this->sourceOptions);
-    $this->description = t('field_notes migration from old D7.');
-    $this->dependencies = array('Combo_4', 'MI_4');
-
-    $this->sourceFields += array(
-      'item_id' => t('Item Id'),
-      'revision_id' => t('Revision ID'),  
-      'field_name' => t('Host field name'),
-      'archived' => t('Archived'),
-	  'host_entity_id' => 'Host entity ID',
-	  'field_pci_type' => "PCI type",
-	  'field_link_type' => 'Link type',
-	  'field_address' => 'Address',
-	  'field_note' => 'Note',
-	    
-    );
-	//$this->sourceFields += parent::getSourceFields('field_collection_item', 'field_primary_user');
-	/*				 
-	$query = Database::getConnection('legacy', $this->sourceConnection)
-		->select('field_collection_item', 'c')
-		->fields('c', array('item_id', 'revision_id', 'field_name', 'archived'))
-		->condition('field_name', 'field_primary_user');
-    $this->source = new  MigrateSourceSQL($query, $columns);
-    */
-	$this->source = new MigrateSourceSQL($this->query(), $this->sourceFields, NULL,
-      $this->sourceOptions);
-    $this->destination = new MigrateDestinationFieldCollection(
-      'field_pci',
-      array('host_entity_type' => 'node')
-    );
-
-    $this->map = new MigrateSQLMap($this->machineName,
-      array(
-        'item_id' => array(
-          'type' => 'int',
-          'not null' => true,
-        ),
-      ),
-      MigrateDestinationFieldCollection::getKeySchema()
-    );
-
-    
-	$this->addFieldMapping('host_entity_id', 'host_entity_id');//->sourceMigration('TradingPartner');
-	$this->addFieldMapping('field_pci_type', 'field_pci_type');
-	$this->addFieldMapping('field_link_type', 'field_link_type');
-	$this->addFieldMapping('field_address', 'field_address');
-	$this->addFieldMapping('field_note', 'field_note');
-	    
-  }
-  /**
-   * Query for basic node fields from Drupal 7.
-   *
-   * @return QueryConditionInterface
-   */
-  protected function query() {
-    $query = Database::getConnection('legancy', $this->sourceConnection)
-		->select('field_collection_item', 'c')
-		->condition('field_name', 'field_pci');
-	
-	/*$query->leftJoin('field_data_field_pci_type', 'fpt', 'fpt.entity_id = c.item_id');
-	$query->leftJoin('field_data_field_link_type', 'fln', 'fln.entity_id = c.item_id');
-	$query->leftJoin('field_data_field_address', 'fa', 'fa.entity_id = c.item_id');
-	$query->leftJoin('field_data_field_note', 'fn', 'fn.entity_id = c.item_id');
-	*/
-	$query->fields('c', array('item_id', 'revision_id', 'field_name', 'archived'));
-	/*
-	$query->addField('fpt', 'field_pci_type_value', 'field_pci_type');
-	$query->addField('fln', 'field_link_type_value', 'field_link_type');
-	$query->addField('fa', 'field_address_value', 'field_address');
-	$query->addField('fn', 'field_note_value', 'field_note');
-	*/	
-    return $query;
-  }
-  
-  public function prepareRow($row) {
-    
-	if (parent::prepareRow($row) === FALSE) {
-      return FALSE;
-    }
-	$this->version->getSourceValues($row, $row->nid);
-	$methods = get_class_methods($this->getSource());
-	print_r($methods);
-	//print_r($this->getMap());
-	//print_r($this->getSource());
-	// Mapping field collection item id
-	$legacy_host_entity_row = Database::getConnection('legacy', $this->sourceConnection)
-                 ->select('field_data_field_pci', 'c')
-                 ->fields('c', array('entity_id', 'field_pci_value'))
-				 ->condition('bundle', array('combo', 'mi'), 'IN')
-				 ->condition('field_pci_value', $row->item_id)
-                 ->execute()
-                 ->fetchObject();
-		if($legacy_host_entity_row){
-			$legacy_entity_id = $legacy_host_entity_row -> entity_id;
-			$new_host_entity_row = Database::getConnection('default')
-                 ->select('field_data_field_legacy_nid', 'c')
-                 ->fields('c', array('entity_id', 'field_legacy_nid_value'))
-				 ->condition('bundle', array('combo', 'mi'), 'IN')
-				 ->condition('field_legacy_nid_value', $legacy_entity_id)
-                 ->execute()
-                 ->fetchObject();
-			$row->host_entity_id = $new_host_entity_row->entity_id;
-		}
-		else{
-			print_r ('No host entity id is found for'  . $row->item_id . "\n");
-		}
-	//mapping entity reference field_note_type target id
-	// entity reference target_ids. In legacy setting, this field values are the english authorized names. We should map it to entity id of type NHPID Ingredient
-	// field_pci_type
-	$code = $row -> field_pci_type;
-	//print_r($code);
-	$code_type = 'pci_type';
-	if ($code){
-		$target_id = $this->get_new_code_entity_id($code, $code_type);
-		if ($target_id ){
-			$row->field_pci_type = $target_id;
-			//print_r($target_id);
-		}
-		else{
-			$this->saveMessage(t('No target id found for code !name', array('!name' => $code)));
-		}
-	}
-	
-	// field_link_type
-	$code = $row -> field_link_type;
-	//print_r($code);
-	$code_type = 'link_type';
-	if ($code){
-		$target_id = $this->get_new_code_entity_id($code, $code_type);
-		if ($target_id ){
-			$row->field_link_type = $target_id;
-			//print_r($target_id);
-		}
-		else{
-			$this->saveMessage(t('No target id found for code !name', array('!name' => $code)));
-		}
-	}
-	
-	print_r($row);
-	print_r($row->item_id . " is migrated \n");
-	return True;
+   public function completeRollback($entity_ids) {
+    //parent::completeRollback();
+    // Code to execute after an entity has been rolled back.
+	//print_r($entity_ids);
+	$table = 'field_data_' . $this->destination_type;
+	db_delete($table)
+	->condition($this->destination_type . '_value', $entity_ids, '=')
+	->execute();
   }
 }
+
