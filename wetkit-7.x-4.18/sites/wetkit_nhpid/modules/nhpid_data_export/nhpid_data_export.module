@@ -1,6 +1,6 @@
 <?php
 // $Id: nhpid_data_export.module,v 1.0.0 2010/07/27 15:26:16 peijun zhang $
-include_once 'XML/Serializer.php';
+//include_once 'XML/Serializer.php';
 define('DELIMINATOR', '~!~');
 define("NEWLINE", "\n");
 define("RECORD_SEPARATOR", '{~!~}');
@@ -56,20 +56,16 @@ function nhpid_data_export_form($form, &$form_state) {
     $default_types[$type] = $type;
 		$types[$type]=array('type'=>$value);
   }
-  
-  //drupal_set_message(nhpid_api_dump($types, 'red', TRUE));
-  //drupal_set_message(nhpid_api_dump($default_types, 'green', TRUE));
+
   $selected_node_types = !empty($form_state['values']['node_types']) ? $form_state['values']['node_types'] : $default_types;
   unset($form_state['input']); //=$form_state['values'];
-  //drupal_set_message(nhpid_api_dump($selected_node_types, 'green', TRUE));
-  //drupal_set_message(nhpid_api_dump($form_state, 'green', TRUE));
   //$selected_node_types = !empty($form_state['values']['node_types']) ? $form_state['values']['node_types'] : NULL;
   $format = !empty($form_state['values']['format']) ? $form_state['values']['format'] : 'Excel5_ori_field';
   
   $formats = array();
   $formats['cvs'] = DELIMINATOR . " deliminated text file";
   $formats['html'] = "HTML tables";
-  $formats['xml'] = "XML file";
+  //$formats['xml'] = "XML file";
   $formats['Excel5'] = "Excel 5";
   $formats['Excel5_ori_field'] = "Excel 5 using original excel field titles";
   
@@ -144,11 +140,12 @@ function nhpid_data_export_form($form, &$form_state) {
   $locker = null;
   $locker_name = null;
   $email_link = null;
-  if ($locker = user_load($locker_uid)){
+  
+  if ($locker_uid and $locker = user_load($locker_uid)){
     $locker_name = $locker -> name;
     if (user_access('access nhpid email') and $locker-> uid != $user -> uid) $email_link = l("Ask info", "nhpid_email/$locker_uid", array('attributes' => array('target' => '_blank')));
   }
-    
+  
   $form['lock']['persistent_status'] = array(
     '#type' => 'item',
     '#description' => t("<span style='text-decoration: blink'><em>The system is locked persistently by $locker_name.</em></span> $email_link"),
@@ -261,20 +258,7 @@ function nhpid_data_export_form($form, &$form_state) {
     '#description' => t('Select one or more workflow states.'),
   );
   
-  
-  /***
-   $form['data']['uncheck-all'] = array(
-    '#type' => 'submit',
-    '#value' => 'Uncheck All',
-    //'#attributes' => array('onclick' => 'window.open(this.href); return FALSE'),
-  );
-  
-   $form['data']['check-all'] = array(
-    '#type' => 'submit',
-    '#value' => 'Check All',
-    //'#attributes' => array('onclick' => 'window.open(this.href); return FALSE'),
-  );
-  */// substituted with module checkall
+ 
   $ntype_header=array('type'=>"Node Type");
   $form['data']['node_types'] = array(
     '#type' => 'tableselect',
@@ -344,6 +328,7 @@ function nhpid_data_export_form($form, &$form_state) {
     '#value' => 'Delete Profile',
     '#attributes' => array('onclick' => 'return confirm("Are you sure you want to delete the profile?");'),
   );
+  
   $output = isset($form_state['values']['result'])? $form_state['values']['result']: null;
   $form['data']['result'] = array(
     '#type' => 'item',
@@ -851,7 +836,8 @@ function nhpid_data_export_result($type, $wk_state, $format,$next_node_type, &$c
       $file_path = $file_path . "/" . $file_name;
       $file_path = file_unmanaged_save_data($file_output, $file_path, FILE_EXISTS_RENAME);
       break;
-    case 'xml';
+    /*
+	case 'xml';
       $file_name = "nhpid_data_$type.xml";
       $options = array(
       "indent"          => "    ",
@@ -902,6 +888,7 @@ function nhpid_data_export_result($type, $wk_state, $format,$next_node_type, &$c
       $file_path = $file_path . "/" . $file_name;
       $file_path = file_unmanaged_save_data($file_output, $file_path, FILE_EXISTS_RENAME);
       break;
+	  */
     case 'Excel5':
     case 'Excel5_ori_field':
       $library = libraries_load('PHPExcel');
@@ -923,61 +910,17 @@ function nhpid_data_export_result($type, $wk_state, $format,$next_node_type, &$c
         elseif ($format == 'Excel5_ori_field') {
           // header row for mapping
           $mapping_rows = array();
-          $mapping_titles = array('drupal content type',	'first data column',	'last data column',	'drupal content title column',	'field name row',	'first data row',	'body column',	'data group title',	'data group content type',	'data form title',	'data form content type',	'skip flag column','2nd drupal content title column');
+          $mapping_titles = array('drupal content type',	'Warning');
           $mapping_rows['title'] = $mapping_titles;
           
           $mapping_param = array();
           $mapping_param[0] = $type;
-          $mapping_param[1] = 'A';
-          
-          $sql = "select count(node_type) as n, node_type, data_group_title, data_group_type, data_form_title, data_form_type from nhpid_excel_drupal_field_mapping group by node_type having node_type =:type ";
-          $result = db_query($sql, array(':type'=>$type));
-          $mapping = $result->fetchAssoc();
-          $mapping_param[2] = numericcol2lettercol($mapping['n'] - 1);
-          $mapping_param[3] = '';  //first title col
-          $mapping_param[4] = 3;
-          $mapping_param[5] = 5;
-          $mapping_param[6] = ''; // body col
-          $mapping_param[7] = $mapping['data_group_title'];
-          $mapping_param[8] = $mapping['data_group_type'];
-          $mapping_param[9] = $mapping['data_form_title'];
-          $mapping_param[10] = $mapping['data_form_type'];
-          $mapping_param[11] = ''; // skip col
-          $mapping_param[12] = ''; // second title col
-          
-          
-          $mapping_fields = array();
-          $col_orders = array();
-          $sql ="select drupal_field_name, mapping_field_name, col_order from {nhpid_excel_drupal_field_mapping} where node_type = :type order by col_order";
-          $result = db_query($sql, array(':type'=>$type));
-          while ($rcd = $result->fetchAssoc()) {
-            $mapping_fields[$rcd['drupal_field_name']] = $rcd['mapping_field_name'];
-            $col_orders[$rcd['col_order']] = $rcd['drupal_field_name'];
-          }
-          $mapping_rows['fields'] = $mapping_fields;
-          
-          //if (in_array('its_ids*', $mapping_fields)) {
-          //  $mapping_param[1] = 'B';
-          //}
-          $title_field1= variable_get('nhpid_' . $type . "_title_field1", '');
-          $title_field2= variable_get('nhpid_' . $type . "_title_field2", '');
-          $body_field = variable_get('nhpid_' . $type . "_body_field", '');
-          while ($field_name = current($col_orders)) {
-              if ($field_name == $title_field1) {
-                  $mapping_param[3] = numericcol2lettercol(key($col_orders));
-              }
-              else if ($field_name == $title_field2) {
-                  $mapping_param[12] = numericcol2lettercol(key($col_orders));
-              }
-              else if ($field_name == $body_field) {
-                  $mapping_param[6] = numericcol2lettercol(key($col_orders));
-              }
-              next($col_orders);
-          }
+          $mapping_param[1] = 'Please do not delete the first 3 rows';
+		   
           $mapping_rows['param'] = $mapping_param;
           $excel_data[$type]['mapping_header'] = $mapping_rows;
-          //drupal_set_message(nhpid_api_dump($mapping_rows, 'green', TRUE));
-          
+		  
+          // mapping column header
           $sql ="select drupal_field_name, excel_field_name from {nhpid_excel_drupal_field_mapping} where node_type = :type order by col_order";
           $result = db_query($sql, array(':type' =>$type));
           
@@ -985,10 +928,23 @@ function nhpid_data_export_result($type, $wk_state, $format,$next_node_type, &$c
           while ($rcd = $result->fetchAssoc()) {
             $col_headers[$rcd['drupal_field_name']] = $rcd['excel_field_name'];
           }
-          // add 'skip' col required by the loader
+          
+		  // Add column titles for code_preparation_group
+		  // Since the original individual preparation fields have been combined to one field (field_preparation_code), the column titles have to added.
+		  if ($type == 'code_preparation_group'){
+			  unset($col_headers['field_preparation_code']);
+			  $preparation_codes=get_all_values_of_a_field_by_node_type('code_organism_preparation', 'field_code');
+			  foreach($preparation_codes as $preparation_code){
+				  $drupal_field_name='field_' . strtolower($preparation_code);
+				  if (!isset($col_headers[$drupal_field_name])){
+					  $col_headers[$drupal_field_name] = $preparation_code;
+				  }
+			  }
+		  }
+		  // add 'skip' col required by the loader
           $col_headers['-skip'] = 'skip';
           
-          // data rows
+          // mapping data rows
           $data_tmp = array();
           foreach ($data as $row) {
             $row['-skip'] = '';
@@ -1003,18 +959,32 @@ function nhpid_data_export_result($type, $wk_state, $format,$next_node_type, &$c
           }
         }
         
-        $excel_data[$type]['header'] = $col_headers;
+        
+		//dpm($data);
+		// Add column titles for code_preparation_group
+		// Since the original individual preparation fields have been combined to one field (field_preparation_code), the column titles have to added.
+		if ($type == 'code_preparation_group'){
+			foreach($data as &$fields_data){
+				$field_preparation_codes=$fields_data['field_preparation_code'];
+				dpm($field_preparation_codes);
+				foreach(explode(';',$field_preparation_codes) as $field_preparation_code){
+					$drupal_field_name='field_' . strtolower($field_preparation_code);
+					$fields_data[$drupal_field_name]='X';
+
+				}
+			}
+		}
+		$excel_data[$type]['header'] = $col_headers;
         
         $excel_data[$type]['data'] = $data;
       }
-      //drupal_set_message(nhpid_api_dump($excel_data, 'green', TRUE));
+      
       $public_file_stream_wrapper = file_stream_wrapper_get_instance_by_scheme('public');
   		if (!$public_file_stream_wrapper->dir_opendir($file_path_root, null)) file_prepare_directory($file_path_root, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
 
-      $file_path = file_create_filename($file_name, $file_path_root);
-      //drupal_set_message(nhpid_api_dump($file_path, 'green', TRUE));
-       $file_path = generate_excel(drupal_realpath($file_path), $excel_data, TRUE, $format == 'Excel5_ori_field');
-      //$file_path =phpexcel_export($excel_data[$type]['header'], $excel_data[$type]['data'], drupal_realpath($file_path), NULL);
+        $file_path = file_create_filename($file_name, $file_path_root);
+        $file_path = generate_excel(drupal_realpath($file_path), $excel_data, TRUE, $format == 'Excel5_ori_field');
+ 
 
 			unset($excel_data);
       break;
@@ -1065,7 +1035,7 @@ function nhpid_data_result_single_type($type, $wk_state, $format, $nids, $sheet_
       }
       $sql = placeholder_query_2_normal_query($sql, $args);
       */
-	  dpm($nids);
+	  //dpm($nids);
       if ($nids) {
         $sql = "select node.nid from {node} where nid in (:nids)";
         $data = get_all_node_by_type(NULL, $sql, array(':nids' => $nids), array('date_type' => 'nhpid_short_dash'));
@@ -1080,7 +1050,7 @@ function nhpid_data_result_single_type($type, $wk_state, $format, $nids, $sheet_
       }
       
     }
-    dpm($datasets);
+    //dpm($datasets);
     switch ($format) {
     /*****
     case 'html':
@@ -1451,8 +1421,6 @@ function nhpid_data_export_send_mail($from_email, $to_email, $subject, $body,$at
   if (function_exists('mimemail')) {
 		$module='mimemail';
 		$key=null;
-    //drupal_mail($module, $key, $to_email, $language, $params = array(), $from_email, $send = TRUE);
-		//drupal_mail($from_email, $to_email, $subject, $body, NULL, array(), NULL, $attachments, '');
 		drupal_set_message("Exported file has been sent to $to_email.");
 	}
 }

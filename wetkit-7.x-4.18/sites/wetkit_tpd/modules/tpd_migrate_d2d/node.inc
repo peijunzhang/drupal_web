@@ -45,6 +45,61 @@ abstract class TPDNodeMigration extends DrupalNode7Migration {
     }
 	return 1;
   }
+   public function getQuery(){
+	  return $this -> query();
+  }
+  public function getSourceIds(){
+	  $result=$this->query()->execute();
+	  $source_ids= array();
+	  while($rc=$result->fetchObject()){
+		  $source_ids[]=$rc->nid;
+	  }
+	  return $source_ids;
+  }
+  public function getProcessedIds(){
+	  $machine_name=$this->getMachineName();
+	  $result=Database::getConnection('default')
+						 ->select('migrate_map_' . strtolower($machine_name), 'm')
+						 ->fields('m')
+						 ->execute();
+	  $source_ids= array();
+	  while($rc=$result->fetchObject()){
+		  $source_ids[]=$rc->sourceid1;
+	  }
+	  return $source_ids;
+  }
+  public function getUnprocessedIds(){
+	  return array_diff($this->getSourceIds(), $this->getProcessedIds());
+  }
+  public function getNeedsUpdateIds(){
+	  $machine_name=$this->getMachineName();
+	  $result=Database::getConnection('default')
+						 ->select('migrate_map_' . strtolower($machine_name), 'm')
+						 ->fields('m')
+						 ->condition('needs_update', 1)
+						 ->execute();
+	  $source_ids= array();
+	  while($rc=$result->fetchObject()){
+		  $source_ids[]=$rc->sourceid1;
+	  }
+	  return $source_ids;
+  }
+  public function getUpdatedIds(){
+	  $machine_name=$this->getMachineName();
+	  $result=Database::getConnection('default')
+						 ->select('migrate_map_' . strtolower($machine_name), 'm')
+						 ->fields('m')
+						 ->condition('needs_update', 0)
+						 ->execute();
+	  $source_ids= array();
+	  while($rc=$result->fetchObject()){
+		  $source_ids[]=$rc->sourceid1;
+	  }
+	  return $source_ids;
+  }
+  public function getUnprocessedAndNeedsUpdateIds(){
+	  return array_unique(array_merge($this->getUnprocessedIds() + $this->getNeedsUpdateIds()));
+  }
 }
 
 /**

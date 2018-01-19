@@ -2,7 +2,8 @@
 // $Id$
 define('NHPID_AUTO_WORKFLOW_MSG', 'Changed based on the NHPID dependency rule automatically by Drupal');
 define("SYSTEM_LOCK_VARIABLE", 'nhpiddms_system_lock');
-
+define('NHPID_FILED_LENGTH_LIMIT_TABLE', 'nhpid_field_length_limit');
+define('NHPID_EXCEL_COLUMN_MAPPING_TABLE', 'nhpid_excel_drupal_field_mapping');
 function nhpid_cron(){
  //delete older files in public folder
  /*
@@ -20,22 +21,22 @@ function nhpid_init(){
 	if (!nhpid_system_lock_access()){
 	  drupal_set_message("Data exporting is in progress or the system is persistently locked. You are not allowed to edit contents nor to add new contents at this moment.", 'warning', false);
 	}
-  $locker_uid = variable_get(SYSTEM_LOCK_VARIABLE, null);
+	$locker_uid = variable_get(SYSTEM_LOCK_VARIABLE, null);
 	if ($locker_uid != 0){
 		$email_link = null;
 		$release_link = null;
 		if ($user->uid != $locker_uid){
 			$locker = user_load($locker_uid);
 			$locker_name = $locker -> name;
-	    if (user_access('access nhpid email') and $locker-> uid != $user -> uid) $email_link = l("Ask info", "nhpid_email/$locker_uid", array('attributes' => array('target' => '_blank')));
-	  }
+			if (user_access('access nhpid email') and $locker-> uid != $user -> uid) $email_link = l("Ask info", "nhpid_email/$locker_uid", array('attributes' => array('target' => '_blank')));
+		}
 		else{
-	    $locker_name = 'you';
+			$locker_name = 'you';
 		}
-    if (user_access('administer nhpid')){
-      $release_link = l("Release.", "admin/rule_management/lock_system", array('attributes' => array('target' => '_blank')));
+		if (user_access('administer nhpid')){
+			$release_link = l("Release.", "admin/rule_management/lock_system", array('attributes' => array('target' => '_blank')));
 		}
-    drupal_set_message("<em>The system is locked persistently by $locker_name.</em></span> $email_link $release_link", 'warning', false);
+		drupal_set_message("<em>The system is locked persistently by $locker_name.</em></span> $email_link $release_link", 'warning', false);
 	}
 	###// Detects user's browser
 	$javascript_browser_name = 'if (navigator.appName.indexOf("Internet Explorer") != -1) {alert("I find that your browser is Microsoft Insternet Explorer, which may not be compatible to the settings of some Drupal themes. If you find that the content cannot be properly displayed, please change your theme or your browser, such as Chrome or Firefox.")};  ';
@@ -68,7 +69,7 @@ function nhpid_permission() {
     
     );
 } 
-
+/*
 function nhpid_form_alter(&$form, &$form_state, $form_id) {
   global $user;
   $node_type = isset($form['#node'])? $form['#node']->type : '';
@@ -84,12 +85,10 @@ function nhpid_form_alter(&$form, &$form_state, $form_id) {
 			$new_options = array_merge($new_options, $nhpid_data_types);
 
 			$form['type']['#options']=$new_options;
-
 		}
 	}
-
 }
-
+*/
 
 /**
 * "After build" callback for node forms. Register the fields to alter.
@@ -99,7 +98,7 @@ function nhpid_node_form_after_build_($form_element, &$form_state) {
   $node_type = $form_element['#node'] -> type;
   $fields = get_node_type_field_name_title_mapping($node_type);
   foreach ($fields as $key => $value) {
-    nhpid_node_form_element_alter_register($form_element, $key, $node_type);
+    //nhpid_node_form_element_alter_register($form_element, $key, $node_type);
   }
   return $form_element;
 }
@@ -117,8 +116,6 @@ function nhpid_node_form_element_description_alter( $name, &$elements, $node_typ
       }
     }
   }
-  
-  //drupal_set_message(nhpid_api_dump($list, 'green', TRUE));
         
   if ($list){
     
@@ -127,8 +124,6 @@ function nhpid_node_form_element_description_alter( $name, &$elements, $node_typ
     $field_info = content_fields($name, $noce_type);
     if (!$field_info['multiple']) $elements[0]['value']['#description'] = $des;
   }
-	// pluralize field label if it has multiple values
-  //drupal_set_message(nhpid_api_dump($elements, 'green', TRUE));
 
 }
 /**
@@ -138,11 +133,7 @@ function nhpid_node_form_element_description_alter( $name, &$elements, $node_typ
 function nhpid_node_form_element_alter_register(&$elements, $name, $node_type) {
   foreach (element_children($elements) as $key) {
     if (isset($elements[$key]) && ((isset($elements[$key]['#name']) && $elements[$key]['#name'] == $name) || (isset($elements[$key]['#field_name']) && $elements[$key]['#field_name'] == $name) || (isset($elements[$key]['#group_name']) && $elements[$key]['#group_name'] == $name))) {
-      //drupal_set_message(nhpid_api_dump($elements[$key]['#name'], 'red', TRUE));
-      //drupal_set_message(nhpid_api_dump($key, 'red', TRUE));
-      //drupal_set_message(nhpid_api_dump($name, 'red', TRUE));
-      //drupal_set_message(nhpid_api_dump($elements[$key], 'green', TRUE));
-			foreach (module_implements('node_form_element_alter') as $module) {
+      	foreach (module_implements('node_form_element_alter') as $module) {
         //call_user_func_array($module .'_node_form_element_alter', array($name, &$elements[$key],  $node_type));
         //call_user_func_array($module .'_node_form_element_description_alter', array($name, &$elements[$key],  $node_type));
       }
@@ -156,6 +147,7 @@ function nhpid_node_form_element_alter_register(&$elements, $name, $node_type) {
 /**
  * Implementation of hook_form_FORM_alter
  */
+ 
 function nhpid_form_node_form_alter(&$form, &$form_state, $form_id){
 
   // *** Add javascript alert to remind user to update workflow state ****
@@ -163,16 +155,9 @@ function nhpid_form_node_form_alter(&$form, &$form_state, $form_id){
   	$form['actions']['submit']['#attributes'] = array('onclick' => 'return(confirm("I bet you did not forget to update workflow state. Continue?"))');
 	}
 	$form['revision_information']['#collapsed']=FALSE;
-  $form['revision_information']['#weight']=-100;
+	$form['revision_information']['#weight']=-100;
 	if (!user_access('bypass node access') && nhpid_api_is_a_nhpid_data_node_type($form['#node']->type)){
-		/*hide($form['menu']);
-    hide($form['comment_settings']);
-    hide($form['author']);
-    hide($form['options']);
-    hide($form['options']);
-    hide($form['body']);
-    hide($form['title']);
-    $form['title']['#printed']=TRUE;*/
+
     $form['options']['#access']=false;
     $form['author']['#access']=false;
     $form['comment_settings']['#access']=false;
@@ -194,73 +179,42 @@ function nhpid_node_access($node, $op, $account){
 	}
 }
 
-function nhpid_node_view($node,  $view_mode, $langcode){
-
-  //*** Add node name to title to let users identify the node type easier. The added node name will not be saved.
-  if (is_nhpid_data_node_type($node -> type)) {
-    $node_name = get_node_name($node -> type) . ' (' . $node -> type .')';
-    
-    $workflow=get_node_current_state_state($node);
-    $node->content['workflow'] = array(
-      '#theme' => 'field',
-      '#weight' => -1,
-	  '#field_type' =>'text',
-      '#title' => 'Current Workflow State',
-      '#label_display' => 'above',
-      '#formatter' => 'text_default',
-		'#items'=>array(array('value'=>$workflow, 'format'=>null, 'safe_value'=>$workflow)),
-			0=>array('#markup' =>$workflow),
-    );
-    $node->content['node_type'] = array(
-      '#theme' => 'field',
-      '#weight' => -2,
-		'#field_type' =>'text',
-      '#title' => 'Node Type',
-      '#label_display' => 'above',
-      '#formatter' => 'text_default',
-		'#items'=>array(array('value'=>$node_name, 'format'=>null, 'safe_value'=>$node_name)),
-			0=>array('#markup' =>$node_name),
-    );
-
-  }
-  
-}
 function nhpid_node_prepare($node){
-  global $user;
-  if (!is_nhpid_data_node_type($node -> type)) return;
+	global $user;
+	if (!is_nhpid_data_node_type($node -> type)) return;
    
-  ## if exporting founction locks the system, prevent to edit or add node
+	## if exporting function locks the system, prevent to edit or add node
 
-  if ($node->batch_upload == false){
-    if (!nhpid_system_lock_access()){
-      if (!empty($_SESSION['messages']['status'])) {
-        foreach ($_SESSION['messages']['status'] as $key => $message) {
-          if (stristr($message, t('This document is now locked against simultaneous editing'))){
-            unset ($_SESSION['messages']['status'][$key]);
-          }
-        }
-        if(module_exists('checkout')) checkout_release($node -> nid, $user -> uid);
-      }
-      drupal_set_message("Data exporting is in progress. The system is locked to prevent data from being changed. Please try it again a few moments later.", 'error');
-      drupal_goto( $_SERVER['HTTP_REFERER'] );
-    }
+	if (!nhpid_system_lock_access()){
+	  if (!empty($_SESSION['messages']['status'])) {
+		foreach ($_SESSION['messages']['status'] as $key => $message) {
+		  if (stristr($message, t('This document is now locked against simultaneous editing'))){
+			unset ($_SESSION['messages']['status'][$key]);
+		  }
+		}
+		if(module_exists('checkout')) checkout_release($node -> nid, $user -> uid);
+	  }
+	  drupal_set_message("Data exporting is in progress. The system is locked to prevent data from being changed. Please try it again a few moments later.", 'error');
+	  drupal_goto( $_SERVER['HTTP_REFERER'] );
 	}
 }
+
 
 function nhpid_node_presave($node){
  
  $type = $node -> type;
+ $wrapper=entity_metadata_wrapper('node', $node);
  	
   //*** add link url to the field field_its_ids. the url is set in the admin panel
   $its_url = variable_get('nhpid_its_url', '');
   if (property_exists($node, 'field_its_ids')) {
     $index = 0;
-	//print_r($node);
+	$lan_code = field_language('node', $node, 'field_its_ids');
 	if (!empty($node -> field_its_ids)){
-		foreach ($node -> field_its_ids[$node->language] as $its_id) {
+		foreach ($node -> field_its_ids[$lan_code] as $its_id) {
 		  if ($its_id['title'] and (!$its_id['url'] or $its_id['url'] == $its_url)) {
-			$url = $its_url . str_replace('#', '', $its_id['title']);
-			$node -> field_its_ids[$node->language][$index]['url'] = $url;
+			$url = str_replace('#',$its_id['title'],$its_url);
+			$node -> field_its_ids[$lan_code][$index]['url'] = $url;
 		  }
 		  $index ++;
 		}
@@ -269,43 +223,8 @@ function nhpid_node_presave($node){
 
   
   ## change formula file name to the ingredient name of the node
-  $chemical_types = array('naming_chemical');
-  if (in_array($node -> type, $chemical_types))
-  {
-    //drupal_set_message(nhpid_api_dump($node-> field_formula, 'red', TRUE));
-    if (is_array($node -> field_formula[0]) and $node -> field_formula[0]['filename']) {
-      $formala_field = $node -> field_formula[0];
-      $fid = $formala_field['fid'];
-      $old_basename = pathinfo($formala_field['filename'], PATHINFO_FILENAME);
-      $ext = pathinfo($formala_field['filename'], PATHINFO_EXTENSION);
-      $old_filepath = $formala_field['filepath'];
-      $path_parts = pathinfo($old_filepath);
-      $dirname = $path_parts['dirname'];
-
-
-      $new_basename = $node -> field_ingredient_name[0]['value'];
-      $new_filename = "$new_basename.$ext";
-      //drupal_set_message(nhpid_api_dump($new_basename, 'brown', TRUE));
-      $new_pathname = "$dirname/" .  nhpid_encode_special_filename_characters($new_basename) . ".$ext";
-      //drupal_set_message(nhpid_api_dump($new_pathname, 'brown', TRUE));
-      if ($formala_field['filepath']) $node  -> field_formula[0]['filepath'] = $new_pathname;
-      if ($formala_field['filename']) $node  -> field_formula[0]['filename'] = $new_filename;
-      if ($formala_field['destination']) {
-        $node  -> field_formula[0]['destination'] = $new_pathname;
-      }
-
-      //drupal_set_message(nhpid_api_dump($node-> field_formula, 'brown', TRUE));
-
-    $sql = "update {files} set filename = '%s', filepath = '%s' where fid = %d";
-    if (file_move($old_filepath, $new_pathname)) {
-      $result = db_query($sql, $new_filename, $old_filepath, $fid);
-      if (!$result) {
-          form_set_error('', "Formula uploading failed.");
-      }
-    }
-    }
-  }
-
+  ## Function is implemented by using the module filefield_paths.
+  
   ### list all duplicates
   $duplicate_nids = nhpid_fetch_duplicate_node_nids ($node);
   //drupal_set_message(nhpid_api_dump($duplicate_nids, 'red', TRUE));
@@ -339,7 +258,7 @@ function nhpid_node_update($node){
   nhpid_api_index_node($node);
 }
 
-function nhpid_node_validate_($node, $form, &$form_state){
+function nhpid_node_validate($node, $form, &$form_state){
 
 	## skip non-nhpid node types
 	if (!nhpid_api_is_a_nhpid_data_node_type($node -> type)) return;
@@ -391,6 +310,7 @@ function nhpid_node_validate_($node, $form, &$form_state){
 			}
 		}
 	}
+	
 	
 
         ### If data is exporting, lock system to prevent data from changed
@@ -486,21 +406,20 @@ function nhpid_node_validate_($node, $form, &$form_state){
         $not_empty = array();
         foreach($field_names as $u_field) {
 
-		$field = field_info_instance('node', $u_field, $type);
+		  $field = field_info_instance('node', $u_field, $type);
           $field_label = $field['label'];
-          if ($field['display']['default']['module'] != 'computed_field') {
+	      if ($field['widget']['module'] != 'computed_field') {
 
             /***
              * Field length checking
              * The max allowed length of nhpid node fields are set through the nhpid admin tool panel
              * If no allowed length for the field found, generates an error.
-             * Otherwise, finds any field is too long and generates erors
+             * Otherwise, finds any field is too long and generates errors
              * For compound and multi-valued field, the length checking is single-value and singel_item based.
              * The ckecking can be changed to total length based by using function nhpid_get_field_item_length_too_long_errors($value, $u_field, $field_label, $errors, $allowed_len)                                                                          
              */
 
             $allowed_len = nhpid_get_nhpid_data_field_allowed_length($type, $u_field);
-            //drupal_set_message(nhpid_api_dump("$variable_name: $allowed_len", 'red', TRUE));
             if (empty($allowed_len)) {
               $errors[] = array('field' => $u_field, 'message' => "No allowed max length for <em>$field_label</em> is found in NHPID Rules. Please report the issue to your head.");
             }
@@ -511,11 +430,10 @@ function nhpid_node_validate_($node, $form, &$form_state){
              * Field leading or ending space checking
              * No leading or ending space (use trim() default charset) will be allowed.
              */  
-						//drupal_set_message(nhpid_api_dump( render(node_view($node), 'purple', TRUE)));
             nhpid_get_field_item_leading_trailing_space_errors($node, $u_field, $field_label, $errors);
-						if ($u_field == 'field_fc_cas_number'){
+			if ($u_field == 'field_fc_cas_number'){
               nhpid_get_field_fc_cas_number_ref_errors($node, $u_field, $field_label, $errors);
-						}
+			}
           }
 
         }
@@ -531,18 +449,14 @@ function nhpid_node_validate_($node, $form, &$form_state){
         foreach ($errors as $error) {
           form_set_error($error['field'], $error['message']);
         }
-  /* Enforce revision log message
+    /* Enforce revision log message
 		check nhpid data nodes to be updated only
 	*/
-  //drupal_set_message(nhpid_api_dump($node, 'red', TRUE));
 	if (variable_get('nhpid_enforce_revision_log', 0)){
     if ( (!$node->revision or empty($node->log)) and $node->op == $node->submit and $node->changed and nhpid_is_a_data_node_type($node -> type)) {
       form_set_error('log', t(variable_get('nhpid_enforce_revision_log_log_warning_message', "Please enter the revision log message and check the 'Create new revision' checkbox.")));
 		}
 	}
-}
-function nhpid_get_field_fc_cas_number_ref_error($node, $u_field, $field_label, $errors){
-
 }
 
 function _nhpid_field_attach_validate($entity_type, $entity, &$errors) {
@@ -606,7 +520,22 @@ function nhpid_menu() {
 
   $items = array();
   
-  $root = 'admin/rule_management';
+  $root = 'admin/config/nnhpd/rule_management';
+  $items['admin/config/nnhpd'] = array(
+    'title' => 'NNHPD Custom Settings',
+    'description' => 'Settings for NNHPD custom modudles',
+    // 'position' and 'weight' can be used to place
+    // the group in the the parent overview (admin/config).
+    'position' => 'right',
+    'weight' => -20,
+    'access arguments' => array('access administration pages'),
+    // This renders the group overview.
+    'page callback' => 'system_admin_menu_block_page',
+    // 'file' and 'file path' are required for the
+    // 'system_admin_menu_block_page' callback.
+    'file' => 'system.admin.inc', 
+    'file path' => drupal_get_path('module','system'),
+  );
   $items[$root] = array(
     'title' => 'NHPID Rule Management',
     'description' => 'Settings of NHPID Rules',
@@ -731,8 +660,7 @@ function nhpid_menu() {
 
 
 function nhpid_validate_conditional_fields($form, &$form_state) {
-
-  $value = trim($form['#value']);
+	$value = trim($form['#value']);
     $new = explode("\n", str_replace("\r", '', $value));
     array_walk($new, 'unique_code_trim');
     $new = array_values(array_filter($new));
@@ -783,20 +711,20 @@ function nhpid_get_field_length_too_long_errors($node, $field_name, $field_label
 }
 
 function nhpid_get_field_item_length_too_long_errors($node, $field_name, $field_label, &$errors, $length_limit, $error_label = '') {
-  if (nhpid_field_is_empty($field_name, $node)) return;
-	
-  $lan = $node->language;
-  $display = array('settings' => array('format_type' => 'nhpid_short_dash'));
+	if (nhpid_field_is_empty($field_name, $node)) return;
+		
+	$lan = $node->language;
+	$display = array('settings' => array('format_type' => 'nhpid_short_dash'));
 	$items = nhpid_api_get_field_values($node, $field_name, $display, $node->language, FALSE, TRUE);
-  foreach ($items as $delta => $item) {
-    $length = strlen($item);
-    $exceed = $length - $length_limit;
-    if ($length_limit > 0 and $exceed > 0) {
-      $error_name = "$field_name][$lan][$delta][value";
-      $error_label = $field_label . '('. strval($delta+1) . ')';
-      $errors[] = array('field' => $error_name, 'message' => "The value of the field <em>$error_label ($length letters long) </em> exceeds allowed length ($length_limit) by $exceed.");
-    }
-  }
+	foreach ($items as $delta => $item) {
+		$length = strlen($item);
+		$exceed = $length - $length_limit;
+		if ($length_limit > 0 and $exceed > 0) {
+		  $error_name = "$field_name][$lan][$delta][value";
+		  $error_label = $field_label . '('. strval($delta+1) . ')';
+		  $errors[] = array('field' => $error_name, 'message' => "The value of the field <em>$error_label ($length letters long) </em> exceeds allowed length ($length_limit) by $exceed.");
+		}
+	}
 }
 function nhpid_get_field_fc_cas_number_ref_errors($node,  $field_name, $field_label, &$errors){
 	/** Cas number reference rule
@@ -826,41 +754,39 @@ function nhpid_get_field_fc_cas_number_ref_errors($node,  $field_name, $field_la
 	}
 }
 function nhpid_get_field_item_leading_trailing_space_errors($node,  $field_name, $field_label, &$errors) {
-  if (nhpid_field_is_empty($field_name, $node)) return;
+	if (nhpid_field_is_empty($field_name, $node)) return;
 	$lan = $node->language;
 	$items = nhpid_api_field_get_items($node, $field_name);
-  foreach ($items as $delta => $item) {
+	foreach ($items as $delta => $item) {
 		if (isset($item['value'])){
-      if (strlen($item['value']) !=  strlen(trim($item['value']))) {
-        $error_name = "$field_name][$lan][$delta][value";
-        $error_label = $field_label . '('. strval($index+1) . ')';
-        $errors[] = array('field' => $error_name, 'message' => "The value of the field <em>$error_label </em> contains leading or trailing spaces (space, tab, new line, carriage return, NUL-byte, or vertical bar).");
-      }
+		  if (strlen($item['value']) !=  strlen(trim($item['value']))) {
+			$error_name = "$field_name][$lan][$delta][value";
+			$error_label = $field_label . '('. strval($index+1) . ')';
+			$errors[] = array('field' => $error_name, 'message' => "The value of the field <em>$error_label </em> contains leading or trailing spaces (space, tab, new line, carriage return, NUL-byte, or vertical bar).");
+		  }
 		}
 
-    else if (isset($item['entity']) and gettype($item['entity']) == 'object' and get_class($item['entity']) == 'FieldCollectionItemEntity') {
-      $fc_fields = field_info_instances('field_collection_item', $field_name);
-      //drupal_set_message(nhpid_api_dump($fc_fields, 'purple', TRUE));
-			foreach ($fc_fields as $subkey => $subfield) {
-        $sub_type = $field_name;
-        if ($sub_type) {
-          $sub_field = field_info_instance('field_collection_item', $subkey, $sub_type);
-          $sub_field_label = $sub_field['label'];
-          $error_label = $field_label . '(' . strval($delta + 1) . ')' . $sub_field_label;
-          //drupal_set_message(nhpid_api_dump($sub_field, 'purple', TRUE));
-        }
-        $subitems = $item['entity']->{$subkey}[$lan];
-        //drupal_set_message(nhpid_api_dump($subitems, 'purple', TRUE));
-				foreach($subitems as $subdelta => $subitem){
-          if (isset($subitem['value'])){
+		else if (isset($item['entity']) and gettype($item['entity']) == 'object' and get_class($item['entity']) == 'FieldCollectionItemEntity') {
+		$fc_fields = field_info_instances('field_collection_item', $field_name);
+
+		foreach ($fc_fields as $subkey => $subfield) {
+			$sub_type = $field_name;
+			if ($sub_type) {
+			  $sub_field = field_info_instance('field_collection_item', $subkey, $sub_type);
+			  $sub_field_label = $sub_field['label'];
+			  $error_label = $field_label . '(' . strval($delta + 1) . ')' . $sub_field_label;
+			}
+			$subitems = $item['entity']->{$subkey}[$lan];
+			foreach($subitems as $subdelta => $subitem){
+				if (isset($subitem['value'])){
 			      if (strlen($subitem['value']) !=  strlen(trim($subitem['value']))) {
-              $error_name = "$field_name][$lan][$delta][$subkey][$lan][$subdelta][value";
+					$error_name = "$field_name][$lan][$delta][$subkey][$lan][$subdelta][value";
 			        $error_label = $field_label . '('. strval($delta+1) . '):' . $sub_field_label . '('. strval($subdelta+1) . ')';
 			        $errors[] = array('field' => $error_name, 'message' => "The value of the field <em>$error_label </em> contains leading or trailing spaces (space, tab, new line, carriage return, NUL-byte, or vertical bar).");
 			      }
-					}
 				}
-      }
+			}
+		}
     }
   }
 }
@@ -868,8 +794,9 @@ function nhpid_get_field_item_leading_trailing_space_errors($node,  $field_name,
 function nhpid_get_field_conditionally_requireness_errors($node, &$errors) {
   $lan = $node->language;
   $rules = nhpid_get_field_conditionally_requireness_fields($node -> type);
-  //drupal_set_message(nhpid_api_dump($rules, 'blue', TRUE));
   if (!$rules) return;
+	//dpm($node);
+	
   foreach($rules as $rule_item){
     $fields = array_keys($rule_item['fields']);
     
@@ -879,40 +806,38 @@ function nhpid_get_field_conditionally_requireness_errors($node, &$errors) {
     ## field values counts
     $counts = array();
     $count_max = 0;
-		$fields_values = array();
+	$fields_values = array();
+	//dpm($fields);
+	$fields=array_slice($fields, 0, 5);
+	 $items_values = nhpid_api_get_field_values($node, 'field_route_of_admin', array(), $node->language, FALSE, TRUE);
+
     foreach ($fields as $field){
-      $items_values = nhpid_api_get_field_values($node, $field, array(), $node->language, FALSE, TRUE);
+	  $items_values = nhpid_api_get_field_values($node, $field, array(), $node->language, FALSE, TRUE);
       $fields_values[$field]=$items_values;
-			$count = count($items_values);
+	  $count = count($items_values);
       if ($count != 0){
         $counts[$field] = $count;
         if ($count > $count_max) $count_max = $count;
       }
     }
+
     # if not to check value items
     if ($count_max > 1 and !$check_multi_val_flag) $count_max = 1;
-   //drupal_set_message(nhpid_api_dump($count_max, 'blue', TRUE));
-    
-    //}
+
     for ($i = 0; $i < $count_max; $i++){
       $not_all_empty = false;
       
       foreach ($fields as $field){
-
-				$item_value = false;
-        
-        //drupal_set_message(nhpid_api_dump("$field: $i: $output", 'blue', TRUE));
-        $item_value = (bool)$fields_values[$field][$i];
+		$item_value = false;
+        $item_value = isset($fields_values[$field][$i]) ? (bool)$fields_values[$field][$i] : False;
         if (!$item_value) $item_value = 0;
         $code = '$'. $field . ' = ' . $item_value . ';';
         eval($code);
-
         $not_all_empty = $not_all_empty || !nhpid_field_is_empty($field, $node);
       }
       if ($not_all_empty){
         $out = false;
         eval ('$out = (' . $rule. ');'); ### please notice that '()' is required.
-        //drupal_set_message(nhpid_api_dump("$rule: $out", 'blue', TRUE));
         $mess = "The fields <em>" . implode(', ', $rule_item['fields']) . ' </em> are conditionally required, meaning either all of them should be empty or the formula <em>' . $rule_item['label'] . '</em> should return true. ';
         $n = $i +1;
         if ($count_max > 1){
@@ -924,7 +849,7 @@ function nhpid_get_field_conditionally_requireness_errors($node, &$errors) {
         if (!$out){
           foreach ($fields as $field){
           	$errors[] = array('field' => "$field][$lan][0][value", 'message' => $mess);
-					}
+		  }
         }
       }
     }
@@ -941,7 +866,6 @@ function nhpid_get_field_conditionally_requireness_fields($node_type) {
   
   $rules_ori = explode('}{', $rules_ori);
   $rules = array();
-  //drupal_set_message(nhpid_api_dump($rules_ori, 'blue', TRUE));
   foreach($rules_ori as $rule_ori){
     $rule_out = array();
     $rule_ori_array =  explode('=>', $rule_ori);
@@ -954,15 +878,7 @@ function nhpid_get_field_conditionally_requireness_fields($node_type) {
     preg_match_all($pattern,$rule_ori,$matches);
     
     $fields = $matches[0];
-    /*
-    $value = str_replace('{', '', $rule_ori);
-    $value = str_replace('}', '', $value);
-    $value = str_replace('(', '', $value);
-    $value = str_replace(')', '', $value);
-    $value = str_replace('|', '&', $value);
-    $value = str_replace('^', '&', $value);
-    $fields = explode('&', $value);
-    */
+    
     $rule = str_replace ('&' , ' AND ', $rule_ori);
     $rule = str_replace ('|' , ' OR ', $rule);
     $rule = str_replace ('^' , ' XOR ', $rule);
@@ -979,13 +895,11 @@ function nhpid_get_field_conditionally_requireness_fields($node_type) {
     foreach ($fields as $field){
       $field_info = field_info_instance('node', $field, $node_type);
       $label = $field_info['label'];
-      //drupal_set_message(nhpid_api_dump("$field: $node_type: $label", 'blue', TRUE));
       $fields_labels[$field] = $label;
       $rule_label = str_replace('$' . $field, $label, $rule_label);
     }
     $rule_out['label'] = $rule_label;
     $rule_out['fields'] = $fields_labels;
-    //drupal_set_message(nhpid_api_dump($rule_out, 'blue', TRUE));
     $rules[] = $rule_out;
   }
   return $rules;
@@ -993,15 +907,15 @@ function nhpid_get_field_conditionally_requireness_fields($node_type) {
 function nhpid_get_name_fields_dependency_errors($node, &$errors) {
   ## common names
   ## each common name must be one of synonym_e or ingredient_name_e
-	$lan = $node -> language;
+  $lan = $node -> language;
   $available_names = array();
-	$ingredient_name = nhpid_api_get_field_raw_values($node, 'field_ingredient_name');
+  $ingredient_name = nhpid_api_get_field_raw_values($node, 'field_ingredient_name');
   $available_names[] = $ingredient_name[0];
   $synonyms_e = nhpid_api_get_field_raw_values($node, 'field_fc_synonym_e');
-  //drupal_set_message(nhpid_api_dump($synonyms_e, 'blue', TRUE));
   foreach($synonyms_e as $synonym_e){
     $available_names[] = $synonym_e['field_free_text_part'][0];
   }
+  
   $common_names = nhpid_api_get_field_raw_values($node, 'field_fc_common_name');
   foreach($common_names as $delta => $common_name){
     $name = $common_name['field_free_text_part'][0];
@@ -1013,11 +927,6 @@ function nhpid_get_name_fields_dependency_errors($node, &$errors) {
   ## proper names
   ## each proper name must be one of synonym_e or ingredient_name_e
   $proper_names = nhpid_api_get_field_raw_values($node, 'field_fc_proper_name');
-  //drupal_set_message(nhpid_api_dump($node, 'blue', TRUE));
-  //$node_wrapper = entity_metadata_wrapper('node', $node);
-  //drupal_set_message(nhpid_api_dump($node_wrapper, 'blue', TRUE));
-  //drupal_set_message(nhpid_api_dump($proper_names, 'blue', TRUE));
-  //drupal_set_message(nhpid_api_dump($available_names, 'blue', TRUE));
   foreach($proper_names as $delta => $proper_name){
     $name = $proper_name['field_free_text_part'][0];
     if ($name && !in_array($name, $available_names)){
@@ -1028,10 +937,17 @@ function nhpid_get_name_fields_dependency_errors($node, &$errors) {
 }
 
 function nhpid_get_nhpid_data_field_allowed_length($node_type, $field_name){
-	$variable_name = 'nhpid_field_length_limits_' . $node_type;
-	$limits = variable_get($variable_name, array());
-	$allowed_len = $limits[$field_name];
-	return $allowed_len;
+	$table_name=NHPID_FILED_LENGTH_LIMIT_TABLE;
+	$query =db_select($table_name, 't')
+		->fields('t')
+		->condition('node_type', $node_type)
+		->condition('field_name', $field_name)
+		->execute();
+	$rc =$query ->fetchObject();
+	if ($rc){
+		return $rc ->length_limit;
+	}
+	return null;
 }
 
 function _nhpid_node_access_callback($node,$op, $account=null){
@@ -1040,7 +956,7 @@ function _nhpid_node_access_callback($node,$op, $account=null){
 		$account=$user;
 	}
   ## blocks edting nhpid menu struture nodes by users other than admin
-  $nhpid_menu_node_types = array("nhpid_data_entry", "list_records", "nhpid_data_form","nhpid_data_form_group", "fields_house");
+  $nhpid_menu_node_types = array("space", "nhpid_data_entry", "list_records", "nhpid_data_form","nhpid_data_form_group", "fields_house");
   if (in_array($node -> type, $nhpid_menu_node_types)){
 		if($user -> uid == 1) {
     	return TRUE;
@@ -1109,4 +1025,50 @@ function numericcol2lettercol($number) {
     die("Cannot convert $number to letters");
   }
 
+}
+
+function create_nhpid_actvity($node, $activity_type){
+	global $user;
+	$types = get_all_nhpid_data_node_types();
+	if (in_array($node->type, array_keys($types))){
+		$message = $message = message_create('nhpid_activity', array('uid' => $user->uid));
+		$m_wrapper = entity_metadata_wrapper('message', $message);
+		$m_wrapper->field_nid->set($node->nid);
+		$n_wrapper = entity_metadata_wrapper('node', $node);
+		$m_wrapper->field_space->set($n_wrapper->field_parent_space->value());
+		$m_wrapper->field_activity_title->set($n_wrapper->title->value());
+		$m_wrapper->field_user->set($user);
+		$m_wrapper->field_activity_type->set($activity_type);
+		$m_wrapper->save();
+	}
+}
+
+/*** Function adapted from cck module */
+function cck_array_flatten($array) {
+  $result = array();
+  if (is_array($array)) {
+    foreach ($array as $key => $value) {
+      if (is_array($value)) {
+        $result += cck_array_flatten($value);
+      }
+      else {
+        $result[$key] = $value;
+      }
+    }
+  }
+  return $result;
+}
+function cck_allowed_values_php($field, $flatten = TRUE) {
+  $allowed_values = array();
+  ob_start();
+  if ($field['settings']['allowed_values_php'])
+  $result = eval($field['settings']['allowed_values_php']);
+  ob_end_clean();
+  if (is_array($result)) {
+    if ($flatten) {
+      $result = cck_array_flatten($result);
+    }
+    $allowed_values = $result;
+  }
+  return $allowed_values;
 }

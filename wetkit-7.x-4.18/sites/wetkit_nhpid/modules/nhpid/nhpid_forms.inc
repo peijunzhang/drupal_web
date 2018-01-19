@@ -8,8 +8,7 @@ global $fields_no_limit;
 $fields_additional_detail = array('field_additional_detail_e', 'field_additional_detail_f');
 $fields_restriction = array('field_restriction_desc_e', 'field_restriction_desc_f');
 $fields_no_limit = array('field_old_rationale');
-define('NHPID_FILED_LENGTH_LIMIT_TABLE', 'nhpid_field_length_limit');
-define('NHPID_EXCEL_COLUMN_MAPPING_TABLE', 'nhpid_excel_drupal_field_mapping');
+
 /***
  * Field allowed length setting
  */   
@@ -589,16 +588,16 @@ function nhpid_data_node_type_form_submit($form, &$form_state) {
 function nhpid_its_url_form($form, &$form_state=NULL) {
   $form['help'] = array(
     '#type' => 'item',
-    '#markup' => t('Drupal NHPID links NHPID ITS issues to NHPID data records. This setting defines the base URL of the NHPID ITS issue page. <br>(Default: https://198.103.103.161/issues/show/)' ),
+    '#markup' => t('Drupal NHPID links NHPID ITS issues to NHPID data records. This setting defines the base URL of the NHPID ITS issue page and updates all existing ITS ids. <br>'),
   );
-  $components = variable_get('nhpid_its_url', 'https://its.hc.ircan-rican.org/issues/show/');
+  $components = variable_get('nhpid_its_url', '');
   $form['nhpid_its_url'] = array(
     '#type' => 'textfield',
     '#title' => t('NHPID ITS URL'),
     '#default_value' => $components,
     '#maxwidth' => 20,
     '#required' => TRUE,
-    '#description' => t("Enter the NHPID ITS base url (url without issure number)."),
+    '#description' => t("Enter the NHPID ITS base url (replace the issue id with '#'), such as https://nnhprd.hres.ca/its/node/#."),
   );
   $form['submit'] = array(
     '#type' => 'submit',
@@ -607,15 +606,12 @@ function nhpid_its_url_form($form, &$form_state=NULL) {
   return $form;
 }
 function nhpid_its_url_form_submit($form, &$form_state) {
-  //$old_url = $form_state['storage']['values']['nhpid_its_url'];
   $new_url = $form_state['values']['nhpid_its_url'];
-  $sql = "update {field_data_field_its_ids} set field_its_ids_url=concat(:new_url, field_its_ids_title)";
+  $sql = "update {field_data_field_its_ids} set field_its_ids_url=replace(:new_url, '#', field_its_ids_title)";
   db_query($sql, array(':new_url' => $new_url));
   drupal_flush_all_caches();
-  //drupal_set_message(nhpid_api_dump($sql, 'brown', true));
-  
-  $form_state['storage']['values'] = $form_state['values'];
-  variable_set("nhpid_its_url", $form_state['values']['nhpid_its_url']);
+
+  variable_set("nhpid_its_url", $new_url);
 }
 
 /***
@@ -2245,7 +2241,7 @@ function nhpid_update_caculated_field_values_form($form, &$form_state=NULL){
 
   $form['update']=array(
     '#type' => 'submit',
-    '#value' => t('Update'),
+    '#value' => t('update'),
   );
   return $form;
 }

@@ -20,7 +20,7 @@ abstract class ACNodeMigration extends DrupalNode7Migration {
 		$entity->uid=$row->uid;
 		//print_r ('new_uid: ' . $entity->uid . "\n");
 	}
-	print_r($row->title . " is migrated \n");
+	print_r($entity->title . " is migrated \n");
   }
   public function get_new_user_uid($legacy_uid){
 	 $legacy_user_row = Database::getConnection('legacy', $this->sourceConnection)
@@ -85,6 +85,61 @@ abstract class ACNodeMigration extends DrupalNode7Migration {
 		return $entity_id;
 	}  
 	return null;
+  }
+   public function getQuery(){
+	  return $this -> query();
+  }
+  public function getSourceIds(){
+	  $result=$this->query()->execute();
+	  $source_ids= array();
+	  while($rc=$result->fetchObject()){
+		  $source_ids[]=$rc->nid;
+	  }
+	  return $source_ids;
+  }
+  public function getProcessedIds(){
+	  $machine_name=$this->getMachineName();
+	  $result=Database::getConnection('default')
+						 ->select('migrate_map_' . strtolower($machine_name), 'm')
+						 ->fields('m')
+						 ->execute();
+	  $source_ids= array();
+	  while($rc=$result->fetchObject()){
+		  $source_ids[]=$rc->sourceid1;
+	  }
+	  return $source_ids;
+  }
+  public function getUnprocessedIds(){
+	  return array_diff($this->getSourceIds(), $this->getProcessedIds());
+  }
+  public function getNeedsUpdateIds(){
+	  $machine_name=$this->getMachineName();
+	  $result=Database::getConnection('default')
+						 ->select('migrate_map_' . strtolower($machine_name), 'm')
+						 ->fields('m')
+						 ->condition('needs_update', 1)
+						 ->execute();
+	  $source_ids= array();
+	  while($rc=$result->fetchObject()){
+		  $source_ids[]=$rc->sourceid1;
+	  }
+	  return $source_ids;
+  }
+  public function getUpdatedIds(){
+	  $machine_name=$this->getMachineName();
+	  $result=Database::getConnection('default')
+						 ->select('migrate_map_' . strtolower($machine_name), 'm')
+						 ->fields('m')
+						 ->condition('needs_update', 0)
+						 ->execute();
+	  $source_ids= array();
+	  while($rc=$result->fetchObject()){
+		  $source_ids[]=$rc->sourceid1;
+	  }
+	  return $source_ids;
+  }
+  public function getUnprocessedAndNeedsUpdateIds(){
+	  return array_unique(array_merge($this->getUnprocessedIds() + $this->getNeedsUpdateIds()));
   }
 
 }
@@ -363,7 +418,7 @@ class ACComboMigration2 extends DrupalNode7Migration {
 	if (parent::prepareRow($row) === FALSE) {
       return FALSE;
     }
-	print_r($row->nid);
+	//print_r($row->nid);
 	//print_r($row->field_linked_combos);
 	$legacy_target_ids = $row->field_linked_combos;
 	$new_target_ids = array();
@@ -381,7 +436,7 @@ class ACComboMigration2 extends DrupalNode7Migration {
 		$row->field_linked_combos = $new_target_ids;
 	}
 		
-	print_r($row->nid);
+	//print_r($row->nid);
 	return True;
   }
 }
@@ -412,7 +467,7 @@ class ACMIMigration extends ACNodeMigration {
 	if (parent::prepareRow($row) === FALSE) {
       return FALSE;
     }
-	print_r($row->field_mi_nhpid_name);
+	//print_r($row->field_mi_nhpid_name);
 	// workflow node to workflow field
     $workflow_row = Database::getConnection('legacy', $this->sourceConnection)
                  ->select('workflow_node', 'wd')
@@ -442,7 +497,7 @@ class ACMIMigration extends ACNodeMigration {
 		}
 	}
 	$row->field_mi_nhpid_name = $target_ids;
-	print_r($row->field_mi_nhpid_name);
+	//print_r($row->field_mi_nhpid_name);
 	//print_r($row->{'field_current_tp_status:entity_id'});
 			
 	return True;

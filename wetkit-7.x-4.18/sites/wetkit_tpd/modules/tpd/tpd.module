@@ -285,8 +285,8 @@ function tpd_menu() {
   
   $root = 'admin/rule_management';
   $items[$root] = array(
-    'title' => 'NHPID Rule Management',
-    'description' => 'Settings of NHPID Rules',
+    'title' => 'TPD Rule Management',
+    'description' => 'Settings of TPD Rules',
     //'menu_name' => 'menu-nhpid-data-entry',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('tpd_rule_archive_form'),
@@ -347,7 +347,7 @@ function tpd_menu() {
   );
   */
   $items[$root . '/data_node'] = array(
-    'title' => 'NHPID data node types',
+    'title' => 'TPD data node types',
     'weight' => -5,
     'access arguments' => array('administer tpd'),
     'page callback' => 'drupal_get_form',
@@ -672,4 +672,18 @@ function currentnode_nid(){
     else
         return 0;
 }
-
+function create_tpd_actvity($node, $activity_type){
+	global $user;
+	$types = get_all_nhpid_data_node_types();
+	if (in_array($node->type, array_keys($types))){
+		$message = $message = message_create('tpd_activity', array('uid' => $user->uid));
+		$m_wrapper = entity_metadata_wrapper('message', $message);
+		$m_wrapper->field_nid->set($node->nid);
+		$n_wrapper = entity_metadata_wrapper('node', $node);
+		$m_wrapper->field_space->set($n_wrapper->field_parent_space->value());
+		$m_wrapper->field_activity_title->set($n_wrapper->title->value());
+		$m_wrapper->field_user->set($user);
+		$m_wrapper->field_activity_type->set($activity_type);
+		$m_wrapper->save();
+	}
+}

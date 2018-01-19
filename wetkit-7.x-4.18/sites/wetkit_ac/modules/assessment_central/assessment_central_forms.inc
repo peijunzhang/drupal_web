@@ -424,6 +424,7 @@ function aseessment_central_update_load_ingredient_data_batch($file_path, $re_in
   ini_set('memory_limit', "2000M");
   $drupal_field_excel_mapping = array('field_ingred_id' => 'ingred_id', 'field_authorized_name_e' => 'ingred_authorized_name_eng', 'field_authorized_name_f' => 'ingred_authorized_name_fr', 'field_ingredspec_class_name'=> 'ingredspec_class_name');
   //Load PHPExcel
+  module_load_include('inc', 'phpexcel');
   $library = libraries_load('PHPExcel');
   if (empty($library['loaded'])) {
     watchdog('phpexcel', "Couldn't find the PHPExcel library. Excel export aborted.", array(), WATCHDOG_ERROR);

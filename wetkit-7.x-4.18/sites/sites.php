@@ -61,11 +61,11 @@ $sites['10.158.46.206.legal_opinion_demo']='legal_opinion_demo';
 
 //URL: http://10.158.46.206/legal_opinion
 $sites['10.158.46.206.legal_opinion']='legal_opinion';
+$sites['10.158.46.206.legal_opinion_demo']='legal_opinion_demo';
 
 
 //URL: http://10.158.46.206/wetkit_tpd
 $sites['10.158.46.206.wetkit_tpd']='wetkit_tpd';
-$sites['localhost.wetkit_tpd']='wetkit_tpd';
 //URL: http://10.158.46.206/wetkit_test
 $sites['10.158.46.206.wetkit_test']='wetkit_test';
 
@@ -75,4 +75,8 @@ $sites['10.158.46.206.wetkit_ac']='wetkit_ac';
 //nhpid
 $sites['10.158.46.206.old_nhpid']='old_nhpid';
 $sites['10.158.46.206.wetkit_nhpid']='wetkit_nhpid';
+$sites['10.158.46.206.wetkit_nhpid_demo']='wetkit_nhpid_demo';
+
+//nnhpd_hr
+$sites['10.158.46.206.wetkit_nnhpd_hr']='wetkit_nnhpd_hr';
 

@@ -1,7 +1,6 @@
 {
   "require": {
-    "nodespark/des-connector": "5.x-dev",
-    "elasticsearch/elasticsearch": "~5.0"
+    "nodespark/des-connector": "5.x-dev"
   },
   "minimum-stability": "dev"
 }

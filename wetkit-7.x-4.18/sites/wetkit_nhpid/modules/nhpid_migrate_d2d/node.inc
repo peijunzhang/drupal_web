@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Common mappings for the TPD node migrations.
+ * Common mappings for the NHPID DMS node migrations.
  */
 abstract class NHPIDNodeMigration extends DrupalNode7Migration {
   public function __construct(array $arguments) {
@@ -42,6 +42,9 @@ abstract class NHPIDNodeMigration extends DrupalNode7Migration {
 		elseif ($field_name == 'field_legacy_nid'){
 			$this->addFieldMapping('field_legacy_nid', 'nid');
 		}
+		elseif ($field_name == 'field_preparation_code'){
+			$this->addFieldMapping('field_preparation_code', 'preparation_code');
+		}
 		else{
 			$this->addFieldMapping($field_name, $field_name);
 		}
@@ -63,7 +66,7 @@ abstract class NHPIDNodeMigration extends DrupalNode7Migration {
       return FALSE;
     }
 	
-	
+	//print_r($row);
 	foreach($this -> destination_fields as $field_name => $label){
 		$field=field_info_field($field_name);
 		//mapping entity reference fields target id
@@ -90,6 +93,30 @@ abstract class NHPIDNodeMigration extends DrupalNode7Migration {
 				$row->parent_space=array($default);
 			}
 		}
+		// Its ids. Change the original chili its ids to AO nid.
+		if ($field_name == 'field_its_ids'){
+			$this->set_ao_its_nid($row);
+		}
+		// Some legacy vales of field_fema_number is not numeric.
+		if ($field_name == 'field_fema_number'){
+			if ($row->field_fema_number){
+				foreach($row->field_fema_number as &$item){
+					if (!is_numeric($item)){
+						$item=NULL;
+					}
+				}
+			}
+		}
+		// move individual preparation field to field_preparation_code
+		$preparation_codes=get_all_values_of_a_field_by_node_type('code_organism_preparation', 'field_code');
+		$field_name_root = str_replace('field_', '', $field_name);
+		if (array_search(strtoupper($field_name_root), $preparation_codes)){
+			if ($row->$field_name[0]=='X'){
+				$preparation_code_nid=$this->get_new_code_entity_id(strtoupper($field_name_root), 'code_organism_preparation');
+				$row->preparation_code[]=$preparation_code_nid;
+			}
+		}
+		
 	}
 
 	//$methods = get_class_methods($this);
@@ -198,7 +225,109 @@ abstract class NHPIDNodeMigration extends DrupalNode7Migration {
 		}
 	}
   }
-
+  
+  public function set_ao_its_nid(&$row){
+	$its_url = variable_get('nhpid_its_url', '');
+	$chili_its_ids_title = $row->{'field_its_ids:title'};
+	$chili_its_ids = $row->field_its_ids;
+	$chili_its_ids_attributes = $row->{'field_its_ids:attributes'};
+	$chili_its_ids_language = $row->{'field_its_ids:language'};
+	//print_r($chili_its_ids_title);
+	$oa_its_nids = array();
+	$oa_its_nids_title = array();
+	$oa_its_nids_attributes = array();
+	$oa_its_nids_language = array();
+	if ($chili_its_ids_title){
+		for($i=0; $i<count($chili_its_ids_title); $i++){
+			$chili_its_id_title=$chili_its_ids_title[$i];
+			$its_row = Database::getConnection('default', $this->sourceConnection)
+						 ->select('field_data_field_chili_id', 'c')
+						 ->fields('c')
+						 ->condition('field_chili_id_value', $chili_its_id_title)
+						 ->execute();
+			if($its_row->rowCount()>0){
+				while($rc=$its_row->fetchObject())
+					
+					$entity_id = $rc -> entity_id;
+					$oa_its_nids_title[] = $entity_id;
+					$url = str_replace('#',$entity_id,$its_url);
+					$oa_its_nids[]= $url;
+					//print_r($its_url);
+					//print_r($entity_id);
+					//print_r($url);
+					$oa_its_nids_attributes[]=$chili_its_ids_attributes[$i];
+					$oa_its_nids_language[]=$chili_its_ids_language[$i];
+				}
+			else{
+				$oa_its_nids_title[] = $chili_its_ids_title[$i];
+				$url = str_replace('#',$chili_its_ids_title[$i],$its_url);
+				$oa_its_nids[]= $url;
+				$oa_its_nids_attributes[]=$chili_its_ids_attributes[$i];
+				$oa_its_nids_language[]=$chili_its_ids_language[$i];
+			}
+		}
+		
+		$row->{'field_its_ids:title'}=$oa_its_nids_title;
+		$row->field_its_ids=$oa_its_nids;
+		$row->{'field_its_ids:attributes'}=$oa_its_nids_attributes;
+		$row->{'field_its_ids:language'}=$oa_its_nids_language;
+	}
+  }
+  public function getQuery(){
+	  return $this -> query();
+  }
+  public function getSourceIds(){
+	  $result=$this->query()->execute();
+	  $source_ids= array();
+	  while($rc=$result->fetchObject()){
+		  $source_ids[]=$rc->nid;
+	  }
+	  return $source_ids;
+  }
+  public function getProcessedIds(){
+	  $machine_name=$this->getMachineName();
+	  $result=Database::getConnection('default')
+						 ->select('migrate_map_' . strtolower($machine_name), 'm')
+						 ->fields('m')
+						 ->execute();
+	  $source_ids= array();
+	  while($rc=$result->fetchObject()){
+		  $source_ids[]=$rc->sourceid1;
+	  }
+	  return $source_ids;
+  }
+  public function getUnprocessedIds(){
+	  return array_diff($this->getSourceIds(), $this->getProcessedIds());
+  }
+  public function getNeedsUpdateIds(){
+	  $machine_name=$this->getMachineName();
+	  $result=Database::getConnection('default')
+						 ->select('migrate_map_' . strtolower($machine_name), 'm')
+						 ->fields('m')
+						 ->condition('needs_update', 1)
+						 ->execute();
+	  $source_ids= array();
+	  while($rc=$result->fetchObject()){
+		  $source_ids[]=$rc->sourceid1;
+	  }
+	  return $source_ids;
+  }
+  public function getUpdatedIds(){
+	  $machine_name=$this->getMachineName();
+	  $result=Database::getConnection('default')
+						 ->select('migrate_map_' . strtolower($machine_name), 'm')
+						 ->fields('m')
+						 ->condition('needs_update', 0)
+						 ->execute();
+	  $source_ids= array();
+	  while($rc=$result->fetchObject()){
+		  $source_ids[]=$rc->sourceid1;
+	  }
+	  return $source_ids;
+  }
+  public function getUnprocessedAndNeedsUpdateIds(){
+	  return array_unique(array_merge($this->getUnprocessedIds() + $this->getNeedsUpdateIds()));
+  }
 }
 
 /**
