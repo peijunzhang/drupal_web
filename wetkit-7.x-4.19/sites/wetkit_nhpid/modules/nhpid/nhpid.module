@@ -59,7 +59,11 @@ function nhpid_init(){
 function nhpid_permission() {
     return array(
     'administer nhpid' => array(
-      'title' => t('Administer nhpid'), 
+      'title' => t('Administer NHPID'), 
+      'description' => t(''),
+      ),
+	  'manage nhpid' => array(
+      'title' => t('Manage NHPID'), 
       'description' => t(''),
       ),
     'access nhpid content' => array(
@@ -541,8 +545,8 @@ function nhpid_menu() {
     'description' => 'Settings of NHPID Rules',
     //'menu_name' => 'menu-nhpid-data-entry',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('nhpid_rule_archive_form'),
-    'access arguments' => array('administer nhpid'),
+    'page arguments' => array('nhpid_lock_system_form'),
+    'access arguments' => array('manage nhpid'),
     'type' => MENU_NORMAL_ITEM,
     'file' => 'nhpid_forms.inc',
    );
@@ -552,15 +556,15 @@ function nhpid_menu() {
     'access arguments' => array('administer nhpid'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('nhpid_rule_archive_form'),
+    'type' => MENU_LOCAL_TASK,
     //'file' => 'workflow.admin.inc',
-    'type' => MENU_DEFAULT_LOCAL_TASK,
     'file' => 'nhpid_forms.inc',
   );
 
   $items[$root . '/required_fields'] = array(
     'title' => 'Required fields',
     'weight' => -10,
-    'access arguments' => array('administer nhpid'),
+    'access arguments' => array('manage nhpid'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('nhpid_required_field_form'),
     'type' => MENU_LOCAL_TASK,
@@ -570,7 +574,7 @@ function nhpid_menu() {
   $items[$root . '/conditionally_required_fields'] = array(
     'title' => 'Conditionally required fields',
     'weight' => -9,
-    'access arguments' => array('administer nhpid'),
+    'access arguments' => array('manage nhpid'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('nhpid_conditionally_required_field_form'),
     'type' => MENU_LOCAL_TASK,
@@ -590,7 +594,7 @@ function nhpid_menu() {
   $items[$root . '/field_length_limit'] = array(
     'title' => 'Field length limit',
     'weight' => -9,
-    'access arguments' => array('administer nhpid'),
+    'access arguments' => array('manage nhpid'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('nhpid_field_length_limit_form'),
     'file' => 'nhpid_forms.inc',
@@ -600,7 +604,7 @@ function nhpid_menu() {
   $items[$root . '/its_url'] = array(
     'title' => 'NHPID ITS link URL',
     'weight' => -8,
-    'access arguments' => array('administer nhpid'),
+    'access arguments' => array('manage nhpid'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('nhpid_its_url_form'),
     'file' => 'nhpid_forms.inc',
@@ -629,16 +633,16 @@ function nhpid_menu() {
   $items[$root . '/lock_system'] = array(
     'title' => 'Lock system',
     'weight' => -3,
-    'access arguments' => array('administer nhpid'),
+    'access arguments' => array('manage nhpid'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('nhpid_lock_system_form'),
     'file' => 'nhpid_forms.inc',
-    'type' => MENU_LOCAL_TASK,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
   );
   $items[$root . '/revision'] = array(
     'title' => 'Enforce Revision Log',
     'weight' => -2,
-    'access arguments' => array('administer nhpid'),
+    'access arguments' => array('manage nhpid'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('nhpid_enforce_revision_log_form'),
     'file' => 'nhpid_forms.inc',
@@ -648,7 +652,7 @@ function nhpid_menu() {
 	$items[$root . '/update_calculated_field_values'] = array(
     'title' => 'Update calculated field values',
     'weight' => -2,
-    'access arguments' => array('administer nhpid'),
+    'access arguments' => array('manage nhpid'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('nhpid_update_caculated_field_values_form'),
     'file' => 'nhpid_forms.inc',

@@ -44,6 +44,11 @@ EOD;
  * NHPID data node  setting
  */ 
 function assessment_central_data_node_type_form($form, &$form_state=NULL) {
+  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['help'] = array(
     '#type' => 'item',
     '#markup' => t('This setting defines node types storing NHPID data.' ),
@@ -84,7 +89,11 @@ function assessment_central_data_node_type_form_submit($form, &$form_state) {
  * NHPID ITS link url setting
  */ 
 function assessment_central_default_url_form($form, &$form_state=NULL) {
-
+	$trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['help'] = array(
     '#type' => 'item',
     '#markup' => t('This functin sets default urls for links in exported HTML files' ),
@@ -246,6 +255,11 @@ function batch_re_gnerate_title_body_finished($success, $results, $operations) {
  * Rule archive and resstore
  */ 
 function assessment_central_rule_archive_form($form, &$form_state=NULL) {
+  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['#attributes'] = array('enctype' => "multipart/form-data");
   $data = !empty($form_state['values']['data']) ? $form_state['values']['data'] : '';
   $form['help']=array(
@@ -333,7 +347,11 @@ function assessment_central_rule_archive_form_submit($form, &$form_state) {
 
 
 function assessment_central_update_nhpid_ingredients_form($form, &$form_state=NULL) {
-  drupal_set_title("Update NHPID Ingredients List");
+	$trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['help']=array(
     '#type' => 'item', 
     '#markup' => "This tool updates NHPID ingredient list from an excel file. The name of the data sheet must be the first sheet or named as 'NHPID Ingredients', which containing 4 columns in the order of: <br>
@@ -677,7 +695,11 @@ function assessment_central_export_page($node = NULL){
 function assessment_central_export_tab_form($form_id, &$form_state, $node = NULL){
   global $nhpid_format_header;
   global $nhpid_format_footer;
-  $form = array();
+  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $current_state = get_node_current_state_state($node);
   if ($current_state != 'Published'){
     form_set_error('', t('The state of this node is :current_state. It must be </em>Published</em>.', array(':current_state' => $current_state)));
@@ -1398,9 +1420,14 @@ function assessment_central_export_all_batch_finished($success, $results, $opera
   
 }
 function assessment_central_enforce_revision_log_form($form, $form_state=NULL) {
+  
   $enforce_revision_log = !empty($form_state['values']['assessment_central_enforce_revision_log']) ? $form_state['values']['assessment_central_enforce_revision_log'] : variable_get('assessment_central_enforce_revision_log', 0);
   $enforce_revision_log_warning_message = !empty($form_state['values']['assessment_central_enforce_revision_log_warning_message']) ? $form_state['values']['assessment_central_enforce_revision_log_warning_message'] : variable_get('assessment_central_enforce_revision_log_log_warning_message', "Please enter the revision log message and check the 'Create new revision' checkbox.");
-
+	$trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['help']=array(
     '#type' => 'item',
     '#value' => "If enabled, users have to be enter revision log message and check 'Create new revision' for any updates of NHPID data nodes",
@@ -1425,7 +1452,6 @@ function assessment_central_enforce_revision_log_form($form, $form_state=NULL) {
 }
 
 function assessment_central_enforce_revision_log_form_submit($form, &$form_state) {
-  //drupal_set_message(nhpid_api_dump($form_state['values'], 'red', TRUE));
   $nhpid_enforce_revision_log = $form_state['values']['assessment_central_enforce_revision_log'];
   $nhpid_enforce_revision_log_warning_message = $form_state['values']['assessment_central_enforce_revision_log_warning_message'];
 
@@ -1437,8 +1463,18 @@ function assessment_central_enforce_revision_log_form_submit($form, &$form_state
 
 function assessment_central_lock_system_form($form, &$form_state=NULL) {
 	global $user;
+	$trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
 	$lock_persistent = variable_get(SYSTEM_LOCK_VARIABLE, 0);
   $lock_temp = variable_get(DATA_EXPORTING_LOCK_TEMP_VARIABLE, 0);
+  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['lock'] = array(
     '#title' => 'Lock system persistently',
     '#type' => 'fieldset',

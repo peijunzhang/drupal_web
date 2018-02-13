@@ -23,9 +23,17 @@ function nhpid_field_length_limit_form($form, &$form_state=NULL) {
   $default_limit_restriction = variable_get('nhpid_field_length_limit_default_restriction', 2000);
   $default_no_limit = -1;
   $fields_not_checked=array('field_legacy_nid'=>array(),'field_parent_space'=>array(),'field_workflow'=>array());
- 
+  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['#tree']=true;
-
+	$trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['help'] = array(
     '#type' => 'item',
     '#markup' => t("This setting defines the max allowed length of fields. Default values is $default_limit_additional_detail for <em>" . implode(', ', $fields_additional_detail) ."</em>, $default_limit_restriction for <em>" . implode(', ', $fields_restriction) ."</em>, no limit for <em>" . implode(', ', $fields_no_limit) . "</em>, $default_limit_general for others" ),
@@ -184,6 +192,11 @@ function nhpid_field_length_limit_form_submit($form, &$form_state) {
  */ 
 function nhpid_required_field_form($form, &$form_state=NULL) {
 	$form['#tree']=true;
+	$trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
 	$form['help'] = array(
     '#type' => 'item',
     '#markup' => t('This setting defines required NHPID data node fields. Default values are values of the required attribute of global settings of cck fields. Since NHPID node types share cck fields, only fields which are required by all sharing node types are set to required globally.' ),
@@ -245,7 +258,12 @@ function nhpid_required_field_form_submit($form, &$form_state) {
  */ 
 function nhpid_conditionally_required_field_form($form, &$form_state=NULL) {
   $allowed_field_types = array('text', 'list_text', 'text_long', 'number_decimal', 'number_integer', 'number_float',  'date', 'datestamp', 'datetime', 'flexifield', 'link', 'entityreference' ); ## must be in lower case
-	$$form['help'] = array(
+  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
+	$form['help'] = array(
     '#type' => 'item',
     '#markup' => t('This setting defines conditionally required NHPID data node fields. Conditionally required fields are fields which reuiredness is depended on other fields.' ),
   );
@@ -374,6 +392,11 @@ function nhpid_conditionally_required_field_form_submit($form, &$form_state) {
  * Unique node and node field setting
  */ 
 function nhpid_unique_node_field_form($form, &$form_state=NULL) {
+  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['help'] = array(
     '#type' => 'item',
     '#markup' => t('This setting defines unique NHPID data node types and unique fields.  <br> Unique node types do not accept duplicated nodes with the same "title" or with the same value of any of unique fields.' ),
@@ -481,7 +504,12 @@ function nhpid_unique_node_field_form_submit($form, &$form_state) {
  * NHPID data node  setting
  */ 
 function nhpid_data_node_type_form($form, &$form_state=NULL) {
-    $form['help'] = array(
+    $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
+	$form['help'] = array(
     '#type' => 'item',
     '#markup' => t('This setting defines node types storing NHPID data.' ),
   );
@@ -586,6 +614,11 @@ function nhpid_data_node_type_form_submit($form, &$form_state) {
  * NHPID ITS link url setting
  */ 
 function nhpid_its_url_form($form, &$form_state=NULL) {
+  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['help'] = array(
     '#type' => 'item',
     '#markup' => t('Drupal NHPID links NHPID ITS issues to NHPID data records. This setting defines the base URL of the NHPID ITS issue page and updates all existing ITS ids. <br>'),
@@ -621,6 +654,11 @@ function nhpid_auto_title_form($form, $form_state=NULL) {
 
   $form['#theme'] = 'nhpid_auto_title_form';
   $form['#tree'] = TRUE;
+  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['help'] = array(
     '#type' => 'item',
     '#markup' => t('Drupal NHPID can automatically fill the title and body fields of newly created or modified nodes. This setting defines which fields will be used as values of the title and body fields of the node type.'),
@@ -859,6 +897,11 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
 	}
 	ksort($all_referring_fields);
 	  $form['#tree'] = TRUE;
+	  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
 	  $form['help'] = array(
 		'#type' => 'item',
 		'#markup' => t("This setting defines settings used by entityreference fields. " ),
@@ -1872,8 +1915,14 @@ function nhpid_field_dependency_form_submit($form, &$form_state) {
  */ 
 function nhpid_rule_archive_form($form, &$form_state=NULL) {
 	$form['#tree'] = TRUE;
+	
   $form['#attributes'] = array('enctype' => "multipart/form-data");
   $data = !empty($form_state['values']['data']) ? $form_state['values']['data'] : '';
+  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['help']=array(
     '#type' => 'item',
     '#markup' => "This tool lets users to archive all NHPID rules to file and upload archived rule to Drupal. It is suggested that the rules should be archived after any additions and modifications.",
@@ -1964,6 +2013,11 @@ function nhpid_excel_column_title_mapping_form($form, &$form_state=NULL) {
   $fields_not_checked=array('field_legacy_nid'=>array(),'field_parent_space'=>array(),'field_workflow'=>array());
   //$form['#theme'] = 'nhpid_excel_field_mapping_form';
   $form['#tree']=true;
+  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['help']=array(
     '#type' => 'item',
     '#markup' => "To add new mapping, just filled the form and click on 'Save'. To change an existing mapping, click the 'Edit' in the mapping list and change data and save. node_type and drupal_field_name are combined primary key.",
@@ -2092,6 +2146,11 @@ function nhpid_lock_system_form($form, &$form_state=NULL) {
 	global $user;
 	$lock_persistent = variable_get(DATA_EXPORTING_LOCK_VARIABLE, 0);
   $lock_temp = variable_get(DATA_EXPORTING_LOCK_TEMP_VARIABLE, 0);
+  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['lock'] = array(
     '#title' => 'Lock system persistently',
     '#type' => 'fieldset',
@@ -2173,7 +2232,11 @@ function nhpid_enforce_revision_log_form($form, &$form_state=NULL) {
 
   $enforce_revision_log = !empty($form_state['values']['nhpid_enforce_revision_log']) ? $form_state['values']['nhpid_enforce_revision_log'] : variable_get('nhpid_enforce_revision_log', 0);
   $enforce_revision_log_warning_message = !empty($form_state['values']['nhpid_enforce_revision_log_warning_message']) ? $form_state['values']['nhpid_enforce_revision_log_warning_message'] : variable_get('nhpid_enforce_revision_log_log_warning_message', "Please enter the revision log message and check the 'Create new revision' checkbox.");
-
+	$trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['help']=array(
     '#type' => 'item',
     '#markup' => "If enabled, users have to be enter revision log message and check 'Create new revision' for any updates of NHPID data nodes",
@@ -2212,6 +2275,11 @@ function nhpid_enforce_revision_log_form_submit($form, &$form_state) {
 	}
 }
 function nhpid_update_caculated_field_values_form($form, &$form_state=NULL){
+  $trail=menu_get_active_trail();
+	$form['form_title'] = array(
+	'#type' => 'item',
+	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
+	);
   $form['help']=array(
     '#type' => 'item',
     '#markup' => "To speed up data exporting, all exported data are pre-calucalted and cached. Normally, the cached datasets are kept updated automatically. However, in case the datasets need to be updated maunualy, this is the tool to do so.",

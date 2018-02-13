@@ -113,6 +113,10 @@ function tpd_permission() {
       'title' => t('Administer tpd'),
       'description' => t(''),
       ),
+	 'manage tpd' => array(
+      'title' => t('Manage tpd'),
+      'description' => t(''),
+      ),
     'access tpd content' => array(
       'title' => t('Access tpd content'),
       'description' => t(''),
@@ -289,8 +293,8 @@ function tpd_menu() {
     'description' => 'Settings of TPD Rules',
     //'menu_name' => 'menu-nhpid-data-entry',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('tpd_rule_archive_form'),
-    'access arguments' => array('administer tpd'),
+    'page arguments' => array('tpd_lock_system_form'),
+    'access arguments' => array('manage tpd'),
     'type' => MENU_NORMAL_ITEM,
     'file' => 'tpd_forms.inc',
    );
@@ -359,16 +363,16 @@ function tpd_menu() {
   $items[$root . '/lock_system'] = array(
     'title' => 'Lock system',
     'weight' => -3,
-    'access arguments' => array('administer tpd'),
+    'access arguments' => array('manage tpd'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('tpd_lock_system_form'),
     'file' => 'tpd_forms.inc',
-    'type' => MENU_LOCAL_TASK,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
   );
   $items[$root . '/revision'] = array(
     'title' => 'Enforce Revision Log',
     'weight' => -2,
-    'access arguments' => array('administer tpd'),
+    'access arguments' => array('manage tpd'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('tpd_enforce_revision_log_form'),
     'file' => 'tpd_forms.inc',

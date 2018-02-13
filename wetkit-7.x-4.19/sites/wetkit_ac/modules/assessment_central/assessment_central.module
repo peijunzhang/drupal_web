@@ -103,6 +103,10 @@ function assessment_central_permission() {
       'title' => t('Administer assessment central'), 
       'description' => t(''),
       ),
+	 'manage assessment central' => array(
+      'title' => t('Manage AC'), 
+      'description' => t(''),
+      ),
     'access assessment central content' => array(
       'title' => t('Access assessment central content'), 
       'description' => t(''),
@@ -295,8 +299,8 @@ function assessment_central_menu() {
     'description' => 'Settings of Assessment Central Rules',
     'menu_name' => 'main-menu',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('assessment_central_rule_archive_form'),
-    'access arguments' => array('administer assessment central'),
+    'page arguments' => array('assessment_central_lock_system_form'),
+    'access arguments' => array('manage assessment central'),
     'type' => MENU_NORMAL_ITEM,
     'file' => 'assessment_central_forms.inc',
    );
@@ -307,13 +311,13 @@ function assessment_central_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('assessment_central_rule_archive_form'),
     //'file' => 'workflow.admin.inc',
-    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'type' => MENU_LOCAL_TASK,
     'file' => 'assessment_central_forms.inc',
   );
   $items[$root . '/default_urls'] = array(
     'title' => 'Default URLs',
     'weight' => -8,
-    'access arguments' => array('administer assessment central'),
+    'access arguments' => array('manage assessment central'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('assessment_central_default_url_form'),
     'file' => 'assessment_central_forms.inc',
@@ -371,7 +375,7 @@ function assessment_central_menu() {
   $items[$root . '/assessment_central_update_nhpid_ingredients'] = array(
     'title' => 'Update NHPID Ingredients',
     'weight' => -5,
-    'access arguments' => array('administer assessment central'),
+    'access arguments' => array('manage assessment central'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('assessment_central_update_nhpid_ingredients_form'),
     'file' => 'assessment_central_forms.inc',
@@ -389,7 +393,7 @@ function assessment_central_menu() {
   $items[$root . '/revision'] = array(
     'title' => 'Enforce Revision Log',
     'weight' => -2,
-    'access arguments' => array('administer assessment central'),
+    'access arguments' => array('manage assessment central'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('assessment_central_enforce_revision_log_form'),
     'file' => 'assessment_central_forms.inc',
@@ -398,11 +402,11 @@ function assessment_central_menu() {
   $items[$root . '/lock_system'] = array(
     'title' => 'Lock system',
     'weight' => -3,
-    'access arguments' => array('administer assessment central'),
+    'access arguments' => array('manage assessment central'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('assessment_central_lock_system_form'),
     'file' => 'assessment_central_forms.inc',
-    'type' => MENU_LOCAL_TASK,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
   );
   
   return $items;
