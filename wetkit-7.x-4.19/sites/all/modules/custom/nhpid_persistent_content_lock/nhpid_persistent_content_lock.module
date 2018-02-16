@@ -180,25 +180,29 @@ function nhpid_persistent_content_lock_node_view($node,  $view_mode, $langcode){
 function nhpid_persistent_content_lock_node_prepare($node){
   global $user;
 	//If node is persistently locked
-  $lock_status = nhpid_persistent_content_lock_status($node->nid);
-	if ($lock_status){
-    $locker_uid = $lock_status->uid;
-		$locker_name = $lock_status->user_name;
-		$lock_time = format_date($lock_status->timestamp);
-		if ($user->uid != $locker_uid){
-      if (user_access('access nhpid email') ) $email_link = l(" or ask info", "nhpid_email/$locker_uid",array('attributes' => array('target' => '_blank')));
-      $msg = "The content is locked persistently by $locker_name since $lock_time. You are not allowed to edit the content at this moment. Please try it again a few moments later$email_link.";
-      drupal_set_message($msg, 'warning');
-      drupal_goto( $_SERVER['HTTP_REFERER'] );
- 		}
-		else{
-      $msg = "The content is locked persistently by you since $lock_time. If the lock is no more necessary, please release it.";
-      drupal_set_message($msg, 'warning');
-	 	}
+	if (property_exists( $node,'nid') and $node->nid){
+		$lock_status = nhpid_persistent_content_lock_status($node->nid);
+		if ($lock_status){
+		$locker_uid = $lock_status->uid;
+			$locker_name = $lock_status->user_name;
+			$lock_time = format_date($lock_status->timestamp);
+			if ($user->uid != $locker_uid){
+		  $email_link='';
+		  if (user_access('access nhpid email') ) $email_link = l(" or ask info", "nhpid_email/$locker_uid",array('attributes' => array('target' => '_blank')));
+		  $msg = "The content is locked persistently by $locker_name since $lock_time. You are not allowed to edit the content at this moment. Please try it again a few moments later$email_link.";
+		  drupal_set_message($msg, 'warning');
+		  drupal_goto( $_SERVER['HTTP_REFERER'] );
+			}
+			else{
+		  $msg = "The content is locked persistently by you since $lock_time. If the lock is no more necessary, please release it.";
+		  drupal_set_message($msg, 'warning');
+			}
+		}
 	}
 }
 function nhpid_persistent_content_lock_page($node = NULL){
-  return drupal_render(drupal_get_form('nhpid_persistent_content_lock_tab_form', $node));
+  $form=drupal_get_form('nhpid_persistent_content_lock_tab_form', $node);
+  return drupal_render($form);
 }
 
 function nhpid_persistent_content_lock_tab_form($form_id, &$form_state, $node = NULL){
@@ -219,8 +223,9 @@ function nhpid_persistent_content_lock_tab_form($form_id, &$form_state, $node = 
       if ($user->uid == $locker_uid){
         $msg = "The content is now locked persistently by you since $lock_time. If the lock is no more necessary, please release it.";
 			}
-			else{
-        if (user_access('access nhpid email') ) $email_link = l(" or ask info", "nhpid_email/$locker_uid",array('attributes' => array('target' => '_blank')));
+	else{
+        $email_link='';
+		if (user_access('access nhpid email') ) $email_link = l(" or ask info", "nhpid_email/$locker_uid",array('attributes' => array('target' => '_blank')));
         $msg = "The content is locked persistently by $locker_name since $lock_time. You are not allowed to edit the content at this moment. Please try it again a few moments later$email_link. Or, you can release the lock.";
 			}
 
