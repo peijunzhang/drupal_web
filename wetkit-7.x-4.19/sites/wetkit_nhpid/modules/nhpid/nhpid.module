@@ -152,7 +152,7 @@ function nhpid_node_form_element_alter_register(&$elements, $name, $node_type) {
  * Implementation of hook_form_FORM_alter
  */
  
-function nhpid_form_node_form_alter(&$form, &$form_state, $form_id){
+function nhpid_form_node_form_alter_(&$form, &$form_state, $form_id){
 
   // *** Add javascript alert to remind user to update workflow state ****
   if (isset($form['#node']->workflow_wid)){
@@ -162,12 +162,12 @@ function nhpid_form_node_form_alter(&$form, &$form_state, $form_id){
 	$form['revision_information']['#weight']=-100;
 	if (!user_access('bypass node access') && nhpid_api_is_a_nhpid_data_node_type($form['#node']->type)){
 
-    $form['options']['#access']=false;
+    //$form['options']['#access']=false;
     $form['author']['#access']=false;
     $form['comment_settings']['#access']=false;
-    $form['title']['#access']=false;
+    //$form['title']['#access']=false;
     $form['path']['#access']=false;
-    $form['nodehierarchy']['#access']=false;
+    //$form['nodehierarchy']['#access']=false;
 	}
 }
 

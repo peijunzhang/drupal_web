@@ -9,8 +9,8 @@ $plugin = array(
   'render callback' => 'nhpid_persistent_content_lock_persistent_lock_list_render',
   'admin info' => 'nhpid_persistent_content_lock_persistent_lock_list_info',
   'defaults' => array('description' => t('To show persistent locked list by user'),
-      								'title' => 'Persistent Locked Contents',
-									'users' => 'all_users',),
+	'title' => 'Persistently Locked Contents',
+	'users' => 'all_users',),
   'all contexts' => TRUE,
 );
 
@@ -29,7 +29,7 @@ function nhpid_persistent_content_lock_persistent_lock_list_edit_form($form, &$f
     '#default_value' => $conf['title'],
   );
    $form['users'] = array(
-    '#title' => t('All usrs or current logged in user?'),
+    '#title' => t('All users or current logged in user?'),
     '#type' => 'radios',
     '#default_value' => $conf['users'],
 	'#options' => array('current_user' =>"Current User", 'all_users' =>'All Users'),
@@ -61,7 +61,7 @@ function nhpid_persistent_content_lock_persistent_lock_list_info($subtype, $conf
   if (!empty($conf)) {
     $block = new stdClass;
     $block->title = $conf['override_title'] ? $conf['override_title_text'] : '';
-	$block->content=t("Showing persistent locked contents.");
+	$block->content=t("Showing persistently locked contents.");
     return $block;
   }
 }

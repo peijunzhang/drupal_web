@@ -36,8 +36,12 @@ function nhpid_field_length_limit_form($form, &$form_state=NULL) {
 	);
   $form['help'] = array(
     '#type' => 'item',
-    '#markup' => t("This setting defines the max allowed length of fields. Default values is $default_limit_additional_detail for <em>" . implode(', ', $fields_additional_detail) ."</em>, $default_limit_restriction for <em>" . implode(', ', $fields_restriction) ."</em>, no limit for <em>" . implode(', ', $fields_no_limit) . "</em>, $default_limit_general for others" ),
+    '#markup' => t("This setting defines the max allowed length of fields. Default values is $default_limit_additional_detail for <em>" . implode(', ', $fields_additional_detail) ."</em>, $default_limit_restriction for <em>" . implode(', ', $fields_restriction) ."</em>, no limit for <em>" . implode(', ', $fields_no_limit) . "</em>, $default_limit_general for others." ),
   );
+  $form['data_storage'] = array(
+    '#type' => 'item',
+    '#markup' => t('This settings is stored in the database table <em>!table</em>.', array('!table'=>$table_name)),
+   );
 
   $types = get_all_nhpid_data_node_types();
   //$types = array_slice($types, 0, 1);
@@ -198,9 +202,13 @@ function nhpid_required_field_form($form, &$form_state=NULL) {
 	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
 	);
 	$form['help'] = array(
+		'#type' => 'item',
+		'#markup' => t('This setting defines required NHPID data node fields. Default values are values of the required attribute of global settings of cck fields. Since NHPID node types share cck fields, only fields which are required by all sharing node types are set to required globally.' ),
+	);
+	$form['data_storage'] = array(
     '#type' => 'item',
-    '#markup' => t('This setting defines required NHPID data node fields. Default values are values of the required attribute of global settings of cck fields. Since NHPID node types share cck fields, only fields which are required by all sharing node types are set to required globally.' ),
-  );
+    '#markup' => t('This settings reset the required field of field instance directly'),
+   );
 
   $types = get_all_nhpid_data_node_types();
 	$form['node_types']=array(
@@ -267,6 +275,10 @@ function nhpid_conditionally_required_field_form($form, &$form_state=NULL) {
     '#type' => 'item',
     '#markup' => t('This setting defines conditionally required NHPID data node fields. Conditionally required fields are fields which reuiredness is depended on other fields.' ),
   );
+  $form['data_storage'] = array(
+    '#type' => 'item',
+	'#markup' => t('This settings is stored in variable <em>nhpid_[node_type]_is_conditionally_required </em>.' ),
+   );
 
   $types = get_all_nhpid_data_node_types();
   foreach ($types as $node_type => $node_name) {
@@ -392,6 +404,7 @@ function nhpid_conditionally_required_field_form_submit($form, &$form_state) {
  * Unique node and node field setting
  */ 
 function nhpid_unique_node_field_form($form, &$form_state=NULL) {
+  $variable_name='nhpid_unique_node_types';
   $trail=menu_get_active_trail();
 	$form['form_title'] = array(
 	'#type' => 'item',
@@ -401,6 +414,11 @@ function nhpid_unique_node_field_form($form, &$form_state=NULL) {
     '#type' => 'item',
     '#markup' => t('This setting defines unique NHPID data node types and unique fields.  <br> Unique node types do not accept duplicated nodes with the same "title" or with the same value of any of unique fields.' ),
   );
+  $form['data_storage'] = array(
+		'#type' => 'item',
+		'#markup' => t('This settings is stored in the variable <em>!variable_name</em>.', array('!variable_name' => $variable_name)),
+  );
+  
   $defaults_pattern = array("code_.+", );
   
   $node_types = get_all_nhpid_data_node_types();
@@ -416,7 +434,7 @@ function nhpid_unique_node_field_form($form, &$form_state=NULL) {
     }
   }
   //drupal_set_message(nhpid_api_dump($default_types, 'red', TRUE));
-  $components = variable_get('nhpid_unique_node_types', $default_types);
+  $components = variable_get($variable_name, $default_types);
   $form['nhpid_unique_node'] = array(
     '#type' => 'fieldset',
     '#title' => t('NHPID unique node types'),
@@ -504,7 +522,10 @@ function nhpid_unique_node_field_form_submit($form, &$form_state) {
  * NHPID data node  setting
  */ 
 function nhpid_data_node_type_form($form, &$form_state=NULL) {
-    $trail=menu_get_active_trail();
+    $variable_name_all='nhpid_data_node_types';
+	$variable_name_mono='nhpid_monograph_data_node_types';
+	$variable_name_ing='nhpid_ingredient_data_node_types';
+	$trail=menu_get_active_trail();
 	$form['form_title'] = array(
 	'#type' => 'item',
 	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
@@ -512,7 +533,11 @@ function nhpid_data_node_type_form($form, &$form_state=NULL) {
 	$form['help'] = array(
     '#type' => 'item',
     '#markup' => t('This setting defines node types storing NHPID data.' ),
-  );
+	);
+	$form['data_storage'] = array(
+		'#type' => 'item',
+		'#markup' => t('This settings is stored in the variable <em>!variable_name_all and !variable_name_mono and !variable_name_ing</em>.', array('!variable_name_all' => $variable_name_all,'!variable_name_mono' => $variable_name_mono,'!variable_name_ing' => $variable_name_ing)),
+    );
   $defaults_pattern = array("als_.+", "brals_.+", "homeopathic_.+", "herbal_.+", "code_.+", "mono_.+", "naming_.+", "nonnhp_.+", "mi_.+", "nmi_.+", "subing_.+");
 
   $node_types = array();
@@ -530,7 +555,7 @@ function nhpid_data_node_type_form($form, &$form_state=NULL) {
     }
   }
   //drupal_set_message(nhpid_api_dump($default_types, 'red', TRUE));
-  $components = variable_get('nhpid_data_node_types', $default_types);
+  $components = variable_get($variable_name_all, $default_types);
   $form['nhpid_content'] = array(
     '#type' => 'fieldset',
     '#title' => 'ALL NHPID Data Node Types',
@@ -551,7 +576,7 @@ function nhpid_data_node_type_form($form, &$form_state=NULL) {
     '#collapsible' => TRUE,
     '#collapsed' => TRUE,
   );
-  $components = variable_get('nhpid_monograph_data_node_types', array());
+  $components = variable_get($variable_name_mono, array());
   $form['nhpid_monograph_content']['nhpid_monograph_data_node_types'] = array(
     '#type' => 'checkboxes',
     '#title' => 'Monograph data node types',
@@ -566,7 +591,7 @@ function nhpid_data_node_type_form($form, &$form_state=NULL) {
     '#collapsible' => TRUE,
     '#collapsed' => TRUE,
   );
-  $components = variable_get('nhpid_ingredient_data_node_types', array());
+  $components = variable_get($variable_name_ing, array());
   $form['nhpid_ingredient_content']['nhpid_ingredient_data_node_types'] = array(
     '#type' => 'checkboxes',
     '#title' => 'Ingredient data node types',
@@ -614,6 +639,7 @@ function nhpid_data_node_type_form_submit($form, &$form_state) {
  * NHPID ITS link url setting
  */ 
 function nhpid_its_url_form($form, &$form_state=NULL) {
+  $variable_name='nhpid_its_url';
   $trail=menu_get_active_trail();
 	$form['form_title'] = array(
 	'#type' => 'item',
@@ -623,7 +649,11 @@ function nhpid_its_url_form($form, &$form_state=NULL) {
     '#type' => 'item',
     '#markup' => t('Drupal NHPID links NHPID ITS issues to NHPID data records. This setting defines the base URL of the NHPID ITS issue page and updates all existing ITS ids. <br>'),
   );
-  $components = variable_get('nhpid_its_url', '');
+  $form['data_storage'] = array(
+		'#type' => 'item',
+		'#markup' => t('This settings is stored in the variable <em>!variable_name</em>.', array('!variable_name' => $variable_name)),
+  );
+  $components = variable_get($variable_name, '');
   $form['nhpid_its_url'] = array(
     '#type' => 'textfield',
     '#title' => t('NHPID ITS URL'),
@@ -896,8 +926,8 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
 		
 	}
 	ksort($all_referring_fields);
-	  $form['#tree'] = TRUE;
-	  $trail=menu_get_active_trail();
+	$form['#tree'] = TRUE;
+	$trail=menu_get_active_trail();
 	$form['form_title'] = array(
 	'#type' => 'item',
 	'#markup' => '<h2>' . end($trail)['title'] .'</h2>',
@@ -905,6 +935,10 @@ function nhpid_field_dependency_form($form, &$form_state=NULL) {
 	  $form['help'] = array(
 		'#type' => 'item',
 		'#markup' => t("This setting defines settings used by entityreference fields. " ),
+	  );
+	  $form['data_storage'] = array(
+		'#type' => 'item',
+		'#markup' => t('This settings is stored in the variable <em>!variable_name</em>.', array('!variable_name' => $variable_name)),
 	  );
 	  $form['nhpid_entityreference_referred_fields'] = array(
 		'#type' => 'fieldset',
@@ -2022,6 +2056,10 @@ function nhpid_excel_column_title_mapping_form($form, &$form_state=NULL) {
     '#type' => 'item',
     '#markup' => "To add new mapping, just filled the form and click on 'Save'. To change an existing mapping, click the 'Edit' in the mapping list and change data and save. node_type and drupal_field_name are combined primary key.",
   );
+  $form['data_storage'] = array(
+    '#type' => 'item',
+    '#markup' => t('This settings is stored in the database table <em>!table</em>.', array('!table'=>$table_name)),
+   );
   $form['node_types']=array(
 		'#type' => 'value',
 		'#value' => $types,

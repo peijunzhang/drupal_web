@@ -109,48 +109,31 @@ function nhpid_persistent_content_lock_form_alter(&$form, &$form_state, $form_id
 	
 }
 
-function nhpid_persistent_content_lock_node_access($node, $op, $account){
+function nhpid_persistent_content_lock_node_access($node, $op, $account=NULL){
 	global $user;
+	if (!$account){
+		$account=clone($user);
+	}
 	switch($op){
 		case 'update':
-    ## blocks edting nhpid menu struture nodes by users other than admin
-	  $nhpid_menu_node_types = array("nhpdtpd", "tpd_codes", "tpd_data","tpd_data_nodes");
-	  if (in_array($node -> type, $nhpid_menu_node_types)){
-			if($user -> uid == 1) {
-	    	return NODE_ACCESS_IGNORE;
-			}
-			else{
-				return NODE_ACCESS_DENY;
-			}
-	  }
-	  
-
-	  if(nhpid_api_is_a_nhpid_data_node_type($node->type)) {
-	    if (user_access('lock content persistently', $account)){
-        $lock_status = nhpid_persistent_content_lock_status($node->nid);
-				if ($lock_status) {
-          $locker_uid = $lock_status->uid;
-					if($locker_uid==$account->uid){
-		        return NODE_ACCESS_IGNORE;
-					}
-					else{
-		        return NODE_ACCESS_DENY;
-					}
+			$lock_status = nhpid_persistent_content_lock_status($node->nid);
+			if ($lock_status) {
+				$locker_uid = $lock_status->uid;
+				if($locker_uid==$account->uid){
+					return NODE_ACCESS_IGNORE;
+				}
+				else{
+					return NODE_ACCESS_DENY;
+				}
 
 		    }
-				else{
-	        return NODE_ACCESS_IGNORE;
-				}
+			else{
+				return NODE_ACCESS_IGNORE;
 			}
-	    else {
-	      return NODE_ACCESS_DENY;
-	    }
 
-	  }
-	  return NODE_ACCESS_IGNORE;
-		break;
+			break;
 		default:
-		return NODE_ACCESS_IGNORE;
+			return NODE_ACCESS_IGNORE;
 	}
 
 }
@@ -163,17 +146,21 @@ function nhpid_persistent_content_lock_node_view($node,  $view_mode, $langcode){
   $lock_status = nhpid_persistent_content_lock_status($node->nid);
 
 	if ($lock_status){
-    $locker_uid = $lock_status->uid;
+		$locker_uid = $lock_status->uid;
 		$locker_name = $lock_status->user_name;
 		$lock_time = format_date($lock_status->timestamp);
 		if ($user->uid != $locker_uid){
-      if (user_access('access nhpid email') ) $email_link = l(" or ask info", "nhpid_email/$locker_uid",array('attributes' => array('target' => '_blank')));
-      $msg = "The content is locked persistently by $locker_name since $lock_time. You are not allowed to edit the content at this moment. Please try it again a few moments later$email_link.";
-      drupal_set_message($msg, 'warning');
+			  if (user_access('access nhpid email') ) $email_link = l(" or ask info", "nhpid_email/$locker_uid",array('attributes' => array('target' => '_blank')));
+			  $msg = "The content is locked persistently by <em>$locker_name</em> since $lock_time. You are not allowed to edit the content at this moment. Please try it again a few moments later$email_link.";
+			  if (user_access('release persistent lock')){
+				  $release_link=l('release', t('node/@nid/lock', array('@nid'=>$node->nid)));
+				  $msg = $msg . "You can $release_link it, anyway.";
+			  }
+			  drupal_set_message($msg, 'warning', false);
  		}
 		else{
-      $msg = "The content is locked persistently by you since $lock_time. If the lock is no more necessary, please release it.";
-      drupal_set_message($msg, 'warning');
+			  $msg = "The content is locked persistently by you since $lock_time. If the lock is no more necessary, please release it.";
+			  drupal_set_message($msg, 'warning', false);
 	 	}
 	}
 }
@@ -183,19 +170,23 @@ function nhpid_persistent_content_lock_node_prepare($node){
 	if (property_exists( $node,'nid') and $node->nid){
 		$lock_status = nhpid_persistent_content_lock_status($node->nid);
 		if ($lock_status){
-		$locker_uid = $lock_status->uid;
+			$locker_uid = $lock_status->uid;
 			$locker_name = $lock_status->user_name;
 			$lock_time = format_date($lock_status->timestamp);
 			if ($user->uid != $locker_uid){
-		  $email_link='';
-		  if (user_access('access nhpid email') ) $email_link = l(" or ask info", "nhpid_email/$locker_uid",array('attributes' => array('target' => '_blank')));
-		  $msg = "The content is locked persistently by $locker_name since $lock_time. You are not allowed to edit the content at this moment. Please try it again a few moments later$email_link.";
-		  drupal_set_message($msg, 'warning');
-		  drupal_goto( $_SERVER['HTTP_REFERER'] );
+				$email_link='';
+				if (user_access('access nhpid email') ) $email_link = l(" or ask info", "nhpid_email/$locker_uid",array('attributes' => array('target' => '_blank')));
+				$msg = "The content is locked persistently by $locker_name since $lock_time. You are not allowed to edit the content at this moment. Please try it again a few moments later$email_link.";
+				if (user_access('release persistent lock')){
+					  $release_link=l('release', t('node/@nid/lock', array('@nid'=>$node->nid)));
+					  $msg = $msg . "You can $release_link it, anyway.";
+				}
+				drupal_set_message($msg, 'warning', false);
+				drupal_goto( $_SERVER['HTTP_REFERER'] );
 			}
 			else{
-		  $msg = "The content is locked persistently by you since $lock_time. If the lock is no more necessary, please release it.";
-		  drupal_set_message($msg, 'warning');
+			  $msg = "The content is locked persistently by you since $lock_time. If the lock is no more necessary, please release it.";
+			  drupal_set_message($msg, 'warning', false);
 			}
 		}
 	}
@@ -278,30 +269,14 @@ function nhpid_persistent_content_lock_form_submit($form, &$form_state){
 		nhpid_persistent_content_lock_set($nid, $user);
     break;
     default:
-  //drupal_set_message(nhpid_api_dump($path , 'brown', TRUE));
   }
-  //assessment_central_download($path, $file);
 }
 function nhpid_persistent_content_lock_node_tab_access($node, $account = NULL) {
-  //drupal_set_message(nhpid_api_dump($node, 'red', TRUE));
-  //return NODE_ACCESS_DENY;
-	global $user;
-  if (!isset($account)) {
-    $account = $user;
-  }
-  ## blocks edting nhpid menu struture nodes by users other than admin
-  //$nhpid_menu_node_types = array("nhpid_data_entry", "list_records", "nhpid_data_form","nhpid_data_form_group", "fields_house", "article");
-  //if (in_array($node -> type, $nhpid_menu_node_types)){
-		//if($user -> uid == 1) {
-		if(!node_access('update', $node, $account)){
-    	return FALSE;
-		}
-		//else{
-		//	return FALSE;
-		//}
-  //}
-  
-  //if(nhpid_api_is_a_nhpid_data_node_type($node->type)) {
+  	global $user;
+	if (!isset($account)) {
+		$account = $user;
+	}
+	
     if (user_access('lock content persistently', $account)){
       $lock_status = nhpid_persistent_content_lock_status($node->nid);
 			if ($lock_status) {
@@ -322,7 +297,6 @@ function nhpid_persistent_content_lock_node_tab_access($node, $account = NULL) {
       return FALSE;
     }
 
-  //}
   return FALSE;
 }
 function nhpid_persistent_content_lock_overview($account = NULL) {
